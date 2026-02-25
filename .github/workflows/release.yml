@@ -257,6 +257,7 @@ jobs:
       - name: Copy rule-set files to release
         run: |
           cp rule-set/*.srs release/ 2>/dev/null || true
+          cp domains/sa.txt release/sa.txt 2>/dev/null || true
 
       # ============================================
       # STEP 9: Generate checksums and release notes
@@ -357,7 +358,6 @@ jobs:
           prerelease: ${{ inputs.PRE_RELEASE }}
           files: |
             release/*
-            rule-set/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
