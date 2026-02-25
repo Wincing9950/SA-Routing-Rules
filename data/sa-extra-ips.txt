@@ -1,0 +1,13 @@
+# Additional Saudi Arabia IP ranges
+# These are manually curated IPs for Saudi services not covered by RIPE/MaxMind
+# Format: CIDR notation, one per line
+
+# STC (Saudi Telecom Company) - AS39386, AS25019
+# Mobily (Etihad Etisalat) - AS35753, AS43766
+# Zain Saudi Arabia - AS35819
+# Integrated Telecom (Salam) - AS47794
+# GO Telecom - AS198515
+# Bayanat Al-Oula - AS21050
+
+# Note: Most Saudi ISP ranges are already covered by MaxMind/RIPE data.
+# Add specific ranges here only if they are missing from those sources.

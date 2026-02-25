@@ -1,0 +1,371 @@
+name: Generate Saudi Arabia Routing Rules
+
+on:
+  workflow_dispatch:
+    inputs:
+      PRE_RELEASE:
+        description: "Set as pre-release"
+        required: false
+        type: boolean
+        default: false
+      SKIP_DNS:
+        description: "Skip DNS resolution for CrUX domains (faster build)"
+        required: false
+        type: boolean
+        default: true
+  schedule:
+    - cron: "0 3 * * 0"  # Weekly on Sunday at 03:00 UTC
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y idn2
+
+      - name: Install sing-box
+        run: |
+          go install -v github.com/sagernet/sing-box/cmd/sing-box@latest
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+      - name: Set ENV variables
+        run: |
+          echo "RELEASE_NAME=$(date +%Y%m%d%H%M)" >> $GITHUB_ENV
+          echo "TAG_NAME=$(date +%Y%m%d%H%M)" >> $GITHUB_ENV
+          echo "RELEASE_DATE=$(date +'%A %F %T %Z')" >> $GITHUB_ENV
+
+      - name: Create directories
+        run: mkdir -p release rule-set domains sa-ips karing-out
+
+      # ============================================
+      # STEP 1: Generate Saudi Arabia IP Ranges
+      # ============================================
+      - name: Generate SA IP ranges from RIPE NCC
+        run: |
+          chmod +x ./scripts/generate-sa-ips.sh
+          ./scripts/generate-sa-ips.sh
+
+      # ============================================
+      # STEP 2: Download MaxMind GeoLite2 databases
+      # ============================================
+      - name: Download MaxMind GeoLite2 databases
+        if: ${{ env.MAXMIND_LICENSE_KEY != '' }}
+        run: |
+          mkdir -p geolite2
+          echo "Downloading GeoLite2-Country-CSV..."
+          curl -sSL "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-Country-CSV&license_key=${MAXMIND_LICENSE_KEY}&suffix=zip" -o geolite2-country.zip
+          echo "Downloading GeoLite2-ASN-CSV..."
+          curl -sSL "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-ASN-CSV&license_key=${MAXMIND_LICENSE_KEY}&suffix=zip" -o geolite2-asn.zip
+          
+          unzip -o geolite2-country.zip -d geolite2-tmp
+          unzip -o geolite2-asn.zip -d geolite2-tmp
+          cp geolite2-tmp/GeoLite2-Country-CSV_*/GeoLite2-Country-*.csv geolite2/
+          cp geolite2-tmp/GeoLite2-ASN-CSV_*/GeoLite2-ASN-*.csv geolite2/
+          
+          echo "MaxMind GeoLite2 databases downloaded successfully"
+          rm -rf geolite2-tmp geolite2-country.zip geolite2-asn.zip
+        env:
+          MAXMIND_LICENSE_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
+
+      - name: Create placeholder GeoLite2 files (if no MaxMind key)
+        if: ${{ env.MAXMIND_LICENSE_KEY == '' }}
+        run: |
+          mkdir -p geolite2
+          echo "WARNING: MAXMIND_LICENSE_KEY not set. Using RIPE data only."
+          echo "geoname_id,locale_code,continent_code,continent_name,country_iso_code,country_name,is_in_european_union" > geolite2/GeoLite2-Country-Locations-en.csv
+          echo "network,geoname_id,registered_country_geoname_id,represented_country_geoname_id,is_anonymous_proxy,is_satellite_provider" > geolite2/GeoLite2-Country-Blocks-IPv4.csv
+          echo "network,geoname_id,registered_country_geoname_id,represented_country_geoname_id,is_anonymous_proxy,is_satellite_provider" > geolite2/GeoLite2-Country-Blocks-IPv6.csv
+          echo "autonomous_system_number,autonomous_system_organization,network" > geolite2/GeoLite2-ASN-Blocks-IPv4.csv
+          echo "autonomous_system_number,autonomous_system_organization,network" > geolite2/GeoLite2-ASN-Blocks-IPv6.csv
+        env:
+          MAXMIND_LICENSE_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
+
+      # ============================================
+      # STEP 3: Generate Saudi Arabia Domain List
+      # ============================================
+      - name: Generate SA domain list (with CrUX pipeline)
+        run: |
+          chmod +x ./scripts/generate-sa-domains.sh
+          ./scripts/generate-sa-domains.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ============================================
+      # STEP 4: Build geoip.dat and Country.mmdb
+      # ============================================
+      - name: Build geoip tool
+        run: |
+          git clone --depth=1 https://github.com/Loyalsoldier/geoip.git geoip-tool-src
+          cd geoip-tool-src && go build -o ../geoip-bin . && cd ..
+
+      - name: Generate geoip config
+        run: |
+          python3 -c "
+          import json, os
+          
+          has_maxmind = os.path.getsize('geolite2/GeoLite2-Country-Blocks-IPv4.csv') > 200
+          
+          inputs = []
+          
+          if has_maxmind:
+              inputs.append({
+                  'type': 'maxmindGeoLite2CountryCSV',
+                  'action': 'add',
+                  'args': {
+                      'country': 'geolite2/GeoLite2-Country-Locations-en.csv',
+                      'ipv4': 'geolite2/GeoLite2-Country-Blocks-IPv4.csv',
+                      'ipv6': 'geolite2/GeoLite2-Country-Blocks-IPv6.csv'
+                  }
+              })
+              inputs.append({
+                  'type': 'maxmindGeoLite2ASNCSV',
+                  'action': 'add',
+                  'args': {
+                      'ipv4': 'geolite2/GeoLite2-ASN-Blocks-IPv4.csv',
+                      'ipv6': 'geolite2/GeoLite2-ASN-Blocks-IPv6.csv',
+                      'wantedList': {
+                          'cloudflare': ['AS395747','AS394536','AS209242','AS203898','AS202623','AS14789','AS139242','AS133877','AS13335','AS132892'],
+                          'google': ['AS6432','AS55023','AS45566','AS43515','AS41264','AS40873','AS396982','AS395973','AS394699','AS394639','AS394507','AS36987','AS36492','AS36385','AS36384','AS36040','AS36039','AS26910','AS26684','AS22859','AS22577','AS19527','AS19448','AS19425','AS16591','AS16550','AS15169','AS13949','AS139190','AS139070'],
+                          'telegram': ['AS62041','AS62014','AS59930','AS44907','AS211157'],
+                          'facebook': ['AS63293','AS54115','AS32934'],
+                          'twitter': ['AS8945','AS63179','AS54888','AS35995','AS13414'],
+                          'amazon': ['AS16509','AS14618','AS7224','AS8987','AS58588'],
+                          'microsoft': ['AS8075','AS8068','AS8069','AS12076','AS23468','AS200517','AS58862','AS6584','AS63314']
+                      }
+                  }
+              })
+          
+          inputs.append({
+              'type': 'text',
+              'action': 'add',
+              'args': {'name': 'sa', 'uri': './sa-ips/sa-all.txt'}
+          })
+          inputs.append({'type': 'private', 'action': 'add'})
+          
+          wanted_all = ['sa', 'private']
+          overwrite_all = ['sa', 'private']
+          if has_maxmind:
+              overwrite_all.extend(['cloudflare', 'facebook', 'google', 'microsoft', 'telegram', 'twitter'])
+          
+          outputs = [
+              {'type': 'v2rayGeoIPDat', 'action': 'output', 'args': {'outputName': 'geoip.dat'}},
+              {'type': 'v2rayGeoIPDat', 'action': 'output', 'args': {'outputName': 'geoip-lite.dat', 'wantedList': ['sa', 'private']}},
+              {'type': 'maxmindMMDB', 'action': 'output', 'args': {'outputName': 'Country.mmdb', 'overwriteList': overwrite_all}},
+              {'type': 'maxmindMMDB', 'action': 'output', 'args': {'outputName': 'Country-lite.mmdb', 'wantedList': ['sa', 'private']}},
+              {'type': 'text', 'action': 'output'}
+          ]
+          
+          config = {'input': inputs, 'output': outputs}
+          with open('geoip-config.json', 'w') as f:
+              json.dump(config, f, indent=2)
+          print('GeoIP config generated (MaxMind: ' + str(has_maxmind) + ')')
+          "
+
+      - name: Generate geoip.dat and Country.mmdb
+        run: |
+          ./geoip-bin convert -c geoip-config.json
+          cp output/dat/*.dat release/ 2>/dev/null || true
+          cp output/maxmind/*.mmdb release/ 2>/dev/null || true
+
+      # ============================================
+      # STEP 5: Build geosite.dat
+      # ============================================
+      - name: Build geosite.dat
+        run: |
+          git clone --depth=1 https://github.com/v2fly/domain-list-community.git v2ray-geosite
+          cp domains/sa.txt v2ray-geosite/data/sa
+          # Also add category lists if they exist
+          [ -f domains/sa-gov.txt ] && cp domains/sa-gov.txt v2ray-geosite/data/category-gov-sa 2>/dev/null || true
+          [ -f domains/sa-bank.txt ] && cp domains/sa-bank.txt v2ray-geosite/data/category-bank-sa 2>/dev/null || true
+          [ -f domains/sa-services.txt ] && cp domains/sa-services.txt v2ray-geosite/data/category-services-sa 2>/dev/null || true
+          cd v2ray-geosite
+          go run . --outputdir=../release --outputname=geosite.dat --exportlists=sa
+          cd ..
+
+      # ============================================
+      # STEP 6: Build sing-box Rule-Set (.srs)
+      # ============================================
+      - name: Generate GeoSite rule-set (.srs)
+        run: |
+          python3 -c "
+          import json
+          domains = []
+          with open('domains/sa.txt') as f:
+              for line in f:
+                  line = line.strip()
+                  if line and not line.startswith('#'):
+                      domains.append(line)
+          ruleset = {'version': 2, 'rules': [{'domain_suffix': domains}]}
+          with open('geosite-sa.json', 'w') as f:
+              json.dump(ruleset, f, indent=2)
+          print(f'Created geosite-sa.json with {len(domains)} domain suffixes')
+          "
+          sing-box rule-set compile geosite-sa.json -o rule-set/geosite-sa.srs
+
+      - name: Generate GeoIP rule-set (.srs)
+        run: |
+          python3 -c "
+          import json
+          cidrs = []
+          with open('sa-ips/sa-all.txt') as f:
+              for line in f:
+                  line = line.strip()
+                  if line and not line.startswith('#'):
+                      cidrs.append(line)
+          ruleset = {'version': 2, 'rules': [{'ip_cidr': cidrs}]}
+          with open('geoip-sa.json', 'w') as f:
+              json.dump(ruleset, f, indent=2)
+          print(f'Created geoip-sa.json with {len(cidrs)} CIDR blocks')
+          "
+          sing-box rule-set compile geoip-sa.json -o rule-set/geoip-sa.srs
+
+      # ============================================
+      # STEP 7: Generate Karing App Config
+      # ============================================
+      - name: Generate Karing App config
+        run: |
+          python3 scripts/generate-karing-config.py \
+            --domains domains/sa.txt \
+            --ipv4 sa-ips/sa-ipv4-ripe.txt \
+            --ipv6 sa-ips/sa-ipv6-ripe.txt \
+            -o release/SA_Diversion_Rules_Karing_App.json
+          
+          # Also copy the static template
+          cp karing/SA_Diversion_Rules_Karing_App.json release/SA_Karing_Template.json 2>/dev/null || true
+
+      # ============================================
+      # STEP 8: Copy rule-set to release
+      # ============================================
+      - name: Copy rule-set files to release
+        run: |
+          cp rule-set/*.srs release/ 2>/dev/null || true
+
+      # ============================================
+      # STEP 9: Generate checksums and release notes
+      # ============================================
+      - name: Generate sha256sum
+        run: |
+          cd release
+          for f in *.dat *.srs *.mmdb *.json; do
+            if [ -f "$f" ]; then
+              sha256sum "$f" > "${f}.sha256sum"
+            fi
+          done
+
+      - name: Generate Release Notes
+        run: |
+          SA_DOMAINS=$(wc -l < domains/sa.txt)
+          SA_IPS=$(wc -l < sa-ips/sa-all.txt)
+          SA_IPV4=$(wc -l < sa-ips/sa-ipv4-ripe.txt)
+          SA_IPV6=$(wc -l < sa-ips/sa-ipv6-ripe.txt)
+          
+          cat > RELEASE_NOTES << EOF
+          # 🇸🇦 Saudi Arabia Routing Rules
+          
+          Updated on ${{ env.RELEASE_DATE }}
+          
+          ## Statistics
+          - Saudi domains: ${SA_DOMAINS} entries
+          - Saudi IP ranges: ${SA_IPS} CIDR blocks (${SA_IPV4} IPv4 + ${SA_IPV6} IPv6)
+          
+          ## Files
+          
+          | File | Format | Usage |
+          |------|--------|-------|
+          | geoip-sa.srs | sing-box Rule-Set | sing-box v1.8.0+ |
+          | geosite-sa.srs | sing-box Rule-Set | sing-box v1.8.0+ |
+          | geoip.dat | v2ray GeoIP DAT | V2Ray/Xray-core |
+          | geoip-lite.dat | v2ray GeoIP DAT (SA+private) | V2Ray/Xray-core |
+          | geosite.dat | v2ray GeoSite DAT | V2Ray/Xray-core |
+          | Country.mmdb | MaxMind MMDB | sing-box/Clash |
+          | Country-lite.mmdb | MaxMind MMDB (SA+private) | sing-box/Clash |
+          | SA_Diversion_Rules_Karing_App.json | Karing Config | Karing App |
+          
+          ## Sources
+          - RIPE NCC delegated statistics
+          - MaxMind GeoLite2 (if MAXMIND_LICENSE_KEY is set)
+          - CrUX Top Lists (Chrome UX Report)
+          - Curated Saudi domain lists
+          - karenyousefi/bank-domains
+          EOF
+
+      # ============================================
+      # STEP 10: Publish
+      # ============================================
+      - name: Push assets to release branch
+        if: ${{ !inputs.PRE_RELEASE }}
+        run: |
+          cd release || exit 1
+          git init
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b release
+          git add .
+          git commit -m "${{ env.RELEASE_NAME }}"
+          git remote add origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
+          git push -f origin release
+
+      - name: Push rule sets to rule-set branch
+        if: ${{ !inputs.PRE_RELEASE }}
+        run: |
+          cd rule-set || exit 1
+          git init
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b rule-set
+          git add .
+          git commit -m "${{ env.RELEASE_NAME }}"
+          git remote add origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
+          git push -f origin rule-set
+
+      - name: Purge jsDelivr CDN cache
+        if: ${{ !inputs.PRE_RELEASE }}
+        run: |
+          for branch in release rule-set; do
+            cd $branch 2>/dev/null || continue
+            for file in $(ls); do
+              curl -i "https://purge.jsdelivr.net/gh/${{ github.repository }}@${branch}/${file}" 2>/dev/null || true
+            done
+            cd ..
+          done
+
+      - name: Release and upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ env.RELEASE_NAME }}
+          tag_name: ${{ env.TAG_NAME }}
+          body_path: RELEASE_NOTES
+          draft: false
+          prerelease: ${{ inputs.PRE_RELEASE }}
+          files: |
+            release/*
+            rule-set/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Clean older releases
+        if: ${{ !inputs.PRE_RELEASE }}
+        uses: dev-drprasad/delete-older-releases@v0.3.4
+        with:
+          keep_latest: 7
+          delete_tags: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,129 @@
+# Saudi Arabia Services and Apps Domains
+# Popular Saudi apps, services, and platforms
+
+# === Super Apps ===
+tawakkalna.sa
+absher.sa
+nafath.sa
+sehhaty.sa
+tamm.abudhabi
+
+# === Payment & Fintech ===
+stcpay.com.sa
+mada.com.sa
+sadad.com
+apple.sa
+urpay.com
+halala.sa
+moyasar.com
+payfort.com
+hyperpay.com
+tap.company
+
+# === Food Delivery ===
+hungerstation.com
+jahez.net
+toyou.sa
+marsool.com
+careem.com
+the-chefz.com
+wssel.com
+lugmety.com
+
+# === Ride Hailing ===
+careem.com
+jeeny.com
+
+# === Grocery & Shopping ===
+nana.sa
+noon.com
+noon.sa
+jarir.com
+extra.com
+xcite.com
+lulu-sa.com
+namshi.com
+ounass.com
+sivvi.com
+mumzworld.com
+fordeal.com
+shein.com
+
+# === Saudi Streaming & Content ===
+shahid.net
+stctv.com
+jawwy.tv
+mbc.net
+rotana.net
+anghami.com
+telfaz11.com
+myrkott.com
+
+# === Saudi Social Media & Forums ===
+adslgate.com
+haraj.com.sa
+twitter.sa
+halalah.io
+
+# === Saudi Cloud & Hosting ===
+cloud.sa
+saudinic.net.sa
+nic.sa
+sahara.com.sa
+site.sa
+jeraisy.com.sa
+baianat.com.sa
+cloudzy.com
+
+# === Saudi DNS & Infrastructure ===
+dns.sa
+nic.net.sa
+
+# === Saudi Recruitment & HR ===
+bayt.com
+linkedin.sa
+wadhefa.com
+tanqeeb.com
+hrmblocks.com
+qiwa.sa
+musaned.com.sa
+ajeer.com.sa
+taqat.sa
+
+# === Saudi Healthcare Apps ===
+seha.sa
+sehhaty.sa
+cchi.gov.sa
+scfhs.org.sa
+nupco.com
+
+# === Saudi Insurance ===
+tawuniya.com.sa
+bupa.com.sa
+medgulf.com.sa
+malath.com.sa
+walaa.com
+alrajhitakaful.com
+
+# === Saudi Automotive ===
+absher.sa
+mvpi.sa
+moroor.gov.sa
+saudiauto.com.sa
+
+# === Saudi News ===
+spa.gov.sa
+aleqt.com
+alarabiya.net
+alriyadh.com
+okaz.com.sa
+aawsat.com
+alwatan.com.sa
+al-jazirah.com
+almadinah.com
+almowaten.net
+ajel.sa
+sabq.org
+akhbaar24.com
+twasul.info
+slaati.com

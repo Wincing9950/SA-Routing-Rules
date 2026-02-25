@@ -1,0 +1,25 @@
+# Build outputs
+release/
+rule-set/
+output/
+domains/
+sa-ips/
+karing-out/
+geolite2/
+geolite2-tmp/
+geoip-tool-src/
+v2ray-geosite/
+
+# Temp files
+*.tmp
+*.bak
+geoip-bin
+geoip-config.json
+geosite-sa.json
+geoip-sa.json
+sa-crux-live.txt
+/tmp/
+
+# OS
+.DS_Store
+Thumbs.db

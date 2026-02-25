@@ -1,0 +1,165 @@
+# Saudi Arabia Domains List
+# Curated list of domains hosted in or primarily serving Saudi Arabia
+# Format: one domain per line
+# Lines starting with # are comments
+
+# === Saudi TLD ===
+sa
+xn--mgbaam7a8h
+
+# === Major Saudi Websites ===
+sabq.org
+argaam.com
+adslgate.com
+haraj.com.sa
+almubasher.com.sa
+saudiairlines.com
+alriyadh.com
+alarabiya.net
+alrajhibank.com.sa
+thmanyah.com
+srmg.com
+aleqt.com
+okaz.com.sa
+aawsat.com
+alwatan.com.sa
+al-jazirah.com
+almadinah.com
+almowaten.net
+ajel.sa
+twasul.info
+akhbaar24.com
+sabq.org
+slaati.com
+
+# === Saudi Telecom & ISPs ===
+stc.com.sa
+stcplay.gg
+stctv.com
+jawwy.sa
+jawwy.tv
+mobily.com.sa
+mobily.sa
+zain.sa
+go.com.sa
+salam.sa
+bravo.com.sa
+etihad.com.sa
+integrated-telecom.sa
+
+# === Saudi E-commerce & Marketplaces ===
+noon.com
+noon.sa
+jarir.com
+extra.com
+lulu-sa.com
+panda.com.sa
+carrefoursa.com
+tamimi.com
+bindawood.com
+nana.sa
+hungerstation.com
+marsool.com
+careem.com
+mrsool.com
+to-you.sa
+lugmety.com
+
+# === Saudi Financial Services ===
+sama.gov.sa
+tadawul.com.sa
+alrajhibank.com.sa
+alahli.com
+sabb.com
+riyadbank.com
+banquefrancaise.com.sa
+alinma.com
+albilad.com.sa
+baj.gov.sa
+sib.com.sa
+anb.com.sa
+gib.com
+bsf.com.sa
+saib.com.sa
+stcpay.com.sa
+urpay.com
+halala.sa
+tiqmo.com
+tamara.co
+tabby.ai
+
+# === Saudi Real Estate ===
+aqar.fm
+bayut.sa
+propertyfinder.sa
+realestate.com.sa
+
+# === Saudi Travel & Tourism ===
+flynas.com
+flyadeal.com
+almosafer.com
+tajawal.com
+elmenus.sa
+visitsaudi.com
+sauditourism.sa
+booking.sa
+
+# === Saudi Education ===
+ksu.edu.sa
+kau.edu.sa
+kfupm.edu.sa
+psu.edu.sa
+iau.edu.sa
+qu.edu.sa
+tu.edu.sa
+uqu.edu.sa
+bu.edu.sa
+najran.edu.sa
+kku.edu.sa
+mu.edu.sa
+taibahu.edu.sa
+ut.edu.sa
+shaqra.edu.sa
+seu.edu.sa
+tvtc.gov.sa
+
+# === Saudi Healthcare ===
+moh.gov.sa
+seha.sa
+sehhaty.sa
+sehati.gov.sa
+ngha.med.sa
+kfshrc.edu.sa
+nupco.com
+weqaya.org.sa
+
+# === Saudi Entertainment & Media ===
+mbc.net
+shahid.net
+rotana.net
+anghami.com
+srmg.com
+telfaz11.com
+
+# === Saudi Sports ===
+spl.com.sa
+saff.com.sa
+alhilal.com
+alahli.com.sa
+alittihad.com
+alnassrfc.com
+
+# === Saudi Delivery & Logistics ===
+smsa.com
+aramex.com
+naqel.com.sa
+spl.com.sa
+zajil.com
+fetchr.us
+
+# === Saudi Utilities ===
+se.com.sa
+sec.gov.sa
+swcc.gov.sa
+nwc.com.sa
+marafiq.com.sa

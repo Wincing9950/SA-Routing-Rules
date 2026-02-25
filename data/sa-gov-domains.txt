@@ -1,0 +1,190 @@
+# Saudi Arabia Government Domains
+# Official government portals and services
+
+# === Central Government ===
+my.gov.sa
+gov.sa
+data.gov.sa
+open.gov.sa
+vision2030.gov.sa
+pmo.gov.sa
+saudicabinet.gov.sa
+
+# === National Digital Transformation ===
+ndu.gov.sa
+sdaia.gov.sa
+ndp.gov.sa
+
+# === Key Government Apps & Services ===
+absher.sa
+tawakkalna.sa
+nafath.sa
+iam.gov.sa
+elm.sa
+yesser.gov.sa
+etamm.sa
+etimad.sa
+muqeem.sa
+qiwa.sa
+musaned.com.sa
+hrsd.gov.sa
+mol.gov.sa
+ajeer.com.sa
+
+# === Ministry of Interior ===
+moi.gov.sa
+nic.gov.sa
+passport.gov.sa
+jawazat.gov.sa
+traffic.gov.sa
+
+# === Ministry of Finance ===
+mof.gov.sa
+zatca.gov.sa
+gazt.gov.sa
+
+# === Ministry of Commerce ===
+mc.gov.sa
+cr.gov.sa
+saudibusiness.gov.sa
+
+# === Ministry of Health ===
+moh.gov.sa
+nphies.sa
+seha.sa
+sehati.gov.sa
+
+# === Ministry of Education ===
+moe.gov.sa
+noor.moe.gov.sa
+ien.edu.sa
+madrasati.sa
+etec.gov.sa
+
+# === Ministry of Justice ===
+moj.gov.sa
+najiz.sa
+reja.gov.sa
+
+# === Ministry of Foreign Affairs ===
+mofa.gov.sa
+
+# === Ministry of Defense ===
+mod.gov.sa
+afed.edu.sa
+
+# === Ministry of Housing ===
+housing.gov.sa
+sakani.sa
+redf.gov.sa
+
+# === Ministry of Transport ===
+mot.gov.sa
+saptco.com.sa
+sar.com.sa
+
+# === Ministry of Communications ===
+mcit.gov.sa
+cst.gov.sa
+citc.gov.sa
+
+# === Ministry of Human Resources ===
+hrsd.gov.sa
+gosi.gov.sa
+taqat.sa
+
+# === Ministry of Municipal Affairs ===
+momra.gov.sa
+balady.gov.sa
+amanajeddah.gov.sa
+alriyadh.gov.sa
+amanamd.gov.sa
+
+# === Ministry of Environment ===
+mewa.gov.sa
+
+# === Ministry of Energy ===
+moenergy.gov.sa
+
+# === Ministry of Investment ===
+misa.gov.sa
+investsaudi.sa
+
+# === Ministry of Tourism ===
+mt.gov.sa
+scth.gov.sa
+
+# === Ministry of Culture ===
+moc.gov.sa
+
+# === Ministry of Sports ===
+mos.gov.sa
+
+# === Saudi Central Bank (SAMA) ===
+sama.gov.sa
+
+# === Capital Market Authority ===
+cma.org.sa
+
+# === General Authority of Civil Aviation ===
+gaca.gov.sa
+
+# === Saudi Food & Drug Authority ===
+sfda.gov.sa
+
+# === National Cybersecurity Authority ===
+nca.gov.sa
+
+# === Saudi Standards (SASO) ===
+saso.gov.sa
+
+# === General Authority for Statistics ===
+stats.gov.sa
+
+# === Royal Commission ===
+rcjy.gov.sa
+rcrc.gov.sa
+
+# === NEOM ===
+neom.com
+
+# === Saudi Aramco ===
+aramco.com
+saudiaramco.com
+
+# === SABIC ===
+sabic.com
+
+# === Saudi Electricity ===
+se.com.sa
+
+# === Public Investment Fund ===
+pif.gov.sa
+
+# === Saudi Post ===
+sp.com.sa
+splonline.com.sa
+
+# === Zakat, Tax and Customs ===
+zatca.gov.sa
+
+# === General Entertainment Authority ===
+gea.gov.sa
+
+# === Saudi Red Crescent ===
+srca.org.sa
+
+# === King Abdulaziz Center (iThra) ===
+ithra.com
+
+# === Other Government Entities ===
+kacare.gov.sa
+kacst.edu.sa
+saudiexports.sa
+monshaat.gov.sa
+smea.gov.sa
+smc.gov.sa
+ncnp.gov.sa
+nazaha.gov.sa
+boe.gov.sa
+hrc.gov.sa
