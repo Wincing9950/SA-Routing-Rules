@@ -297,6 +297,7 @@ jobs:
           mkdir -p /tmp/sa-dat-build/data
           cp v2ray-geosite/go.mod v2ray-geosite/go.sum /tmp/sa-dat-build/
           cp v2ray-geosite/*.go /tmp/sa-dat-build/ 2>/dev/null || true
+          cp -r v2ray-geosite/internal /tmp/sa-dat-build/ 2>/dev/null || true
           cp -r v2ray-geosite/vendor /tmp/sa-dat-build/ 2>/dev/null || true
           cp domains/sa.txt /tmp/sa-dat-build/data/sa
 
