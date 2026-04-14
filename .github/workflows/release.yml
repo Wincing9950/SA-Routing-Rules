@@ -66,6 +66,16 @@ jobs:
           sudo mv /tmp/sing-box /usr/local/bin/sing-box
           sing-box version
 
+      - name: Install mihomo (for MRS compilation)
+        run: |
+          MIHOMO_VER=$(curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases/latest \
+            | python3 -c "import json,sys; print(json.load(sys.stdin)['tag_name'][1:])")
+          curl -sSL "https://github.com/MetaCubeX/mihomo/releases/download/v${MIHOMO_VER}/mihomo-linux-amd64-v${MIHOMO_VER}.gz" \
+            | gunzip > /tmp/mihomo
+          sudo mv /tmp/mihomo /usr/local/bin/mihomo
+          sudo chmod +x /usr/local/bin/mihomo
+          mihomo -v
+
       - name: Set ENV variables
         run: |
           echo "RELEASE_NAME=$(date +%Y%m%d%H%M)" >> $GITHUB_ENV
@@ -304,6 +314,24 @@ jobs:
           fi
 
       # ============================================
+      # STEP 5c: Build Clash/Mihomo rule-set (sa.yaml + sa.mrs)
+      # ============================================
+      - name: Generate Clash/Mihomo rule-set
+        run: |
+          python3 scripts/generate-clash-ruleset.py \
+            --input domains/sa.txt \
+            --output release/sa.yaml
+          echo "  Generated sa.yaml ($(wc -l < release/sa.yaml) lines)"
+
+          # Compile sa.mrs binary
+          mihomo convert-ruleset domain yaml release/sa.yaml release/sa.mrs 2>/dev/null || \
+            echo "WARNING: mihomo mrs compilation failed — sa.yaml still available"
+
+          if [ -f release/sa.mrs ]; then
+            echo "  sa.mrs compiled: $(wc -c < release/sa.mrs) bytes"
+          fi
+
+      # ============================================
       # STEP 6: Build sing-box Rule-Set (.srs)
       # ============================================
       - name: Generate GeoSite rule-set (.srs)
@@ -400,6 +428,8 @@ jobs:
           | geoip-lite.dat | v2ray GeoIP DAT (SA+private) | V2Ray/Xray-core |
           | geosite.dat | v2ray GeoSite DAT | V2Ray/Xray-core |
           | sa.dat | v2ray GeoSite DAT (SA only) | Xray-core: ext:sa.dat:sa |
+          | sa.yaml | Clash/Mihomo rule-provider YAML | Clash/Mihomo rule-providers |
+          | sa.mrs  | Mihomo rule-set binary | Mihomo (meta) binary format |
           | Country.mmdb | MaxMind MMDB | sing-box/Clash |
           | Country-lite.mmdb | MaxMind MMDB (SA+private) | sing-box/Clash |
           | SA_Diversion_Rules_Karing_App.json | Karing Config | Karing App |
