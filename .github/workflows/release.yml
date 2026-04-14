@@ -13,6 +13,11 @@ on:
         required: false
         type: boolean
         default: false
+      RUN_PTR_SWEEP:
+        description: "Run reverse DNS PTR sweep (slow, usually yields 0 results for SA)"
+        required: false
+        type: boolean
+        default: false
   schedule:
     - cron: "0 3 * * 0"  # Weekly on Sunday at 03:00 UTC
 
@@ -66,6 +71,8 @@ jobs:
           else
             echo "SKIP_DNS=${{ inputs.SKIP_DNS || 'false' }}" >> $GITHUB_ENV
           fi
+          # PTR sweep is opt-in only (always 0 results for SA; skipped on cron and by default on dispatch).
+          echo "RUN_PTR_SWEEP=${{ inputs.RUN_PTR_SWEEP || 'false' }}" >> $GITHUB_ENV
 
       - name: Create directories
         run: mkdir -p release rule-set domains sa-ips karing-out
@@ -128,9 +135,18 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # ============================================
-      # STEP 3b: Install massdns for PTR sweep (optional)
+      # STEP 3b: Install massdns for PTR sweep (opt-in only)
       # ============================================
-      - name: Install massdns (for reverse DNS sweep)
+      - name: Cache massdns binary
+        id: cache-massdns
+        if: ${{ env.RUN_PTR_SWEEP == 'true' }}
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/bin/massdns
+          key: massdns-${{ runner.os }}-v1
+
+      - name: Install massdns
+        if: ${{ env.RUN_PTR_SWEEP == 'true' && steps.cache-massdns.outputs.cache-hit != 'true' }}
         run: |
           sudo apt-get install -y massdns 2>/dev/null || \
           (git clone --depth=1 https://github.com/blechschmidt/massdns.git /tmp/massdns-src \
@@ -140,9 +156,10 @@ jobs:
           echo "massdns unavailable — PTR sweep will be skipped"
 
       # ============================================
-      # STEP 3c: Reverse DNS sweep on SA IP space
+      # STEP 3c: Reverse DNS sweep on SA IP space (opt-in only)
       # ============================================
       - name: Reverse DNS PTR sweep
+        if: ${{ env.RUN_PTR_SWEEP == 'true' }}
         run: |
           curl -sSL --max-time 10 \
             https://raw.githubusercontent.com/blechschmidt/massdns/master/lists/resolvers.txt \
