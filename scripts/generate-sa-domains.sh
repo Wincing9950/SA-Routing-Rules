@@ -48,13 +48,19 @@ if command -v python3 &>/dev/null && [ -f ./scripts/filter_crux_sa_domains.py ];
     gunzip -f /tmp/crux-sa-latest.csv.gz 2>/dev/null || true
     if [ -f /tmp/crux-sa-latest.csv ] && [ -s /tmp/crux-sa-latest.csv ]; then
       echo "     Running CrUX filter pipeline..."
+      DNS_FLAG=""
+      if [ "${SKIP_DNS:-false}" = "false" ]; then
+        DNS_FLAG="--resolve-dns --max-workers 200"
+      fi
       if [ -f ./sa-ips/sa-all.txt ]; then
         python3 ./scripts/filter_crux_sa_domains.py /tmp/crux-sa-latest.csv \
           -i ./sa-ips/sa-all.txt \
-          -o sa-crux-live.txt 2>/dev/null || true
+          -o sa-crux-live.txt \
+          $DNS_FLAG 2>/dev/null || true
       else
         python3 ./scripts/filter_crux_sa_domains.py /tmp/crux-sa-latest.csv \
-          -o sa-crux-live.txt 2>/dev/null || true
+          -o sa-crux-live.txt \
+          $DNS_FLAG 2>/dev/null || true
       fi
       if [ -s sa-crux-live.txt ]; then
         cat sa-crux-live.txt >> sa-crux.txt

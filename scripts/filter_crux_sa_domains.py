@@ -26,6 +26,27 @@ import concurrent.futures
 from urllib.parse import urlparse
 from collections import defaultdict
 
+try:
+    import dns.resolver as _dns_resolver
+    _HAS_DNSPYTHON = True
+except ImportError:
+    _HAS_DNSPYTHON = False
+
+_FAST_RESOLVERS = ['1.1.1.1', '8.8.8.8', '9.9.9.9', '208.67.222.222']
+_DNS_TIMEOUT = 2  # seconds
+
+
+def _make_resolver():
+    """Return a configured dns.resolver.Resolver using fast public nameservers."""
+    if not _HAS_DNSPYTHON:
+        return None
+    r = _dns_resolver.Resolver()
+    r.nameservers = _FAST_RESOLVERS
+    r.timeout = _DNS_TIMEOUT
+    r.lifetime = _DNS_TIMEOUT
+    return r
+
+
 # Saudi Arabia TLDs and sub-TLDs
 SA_TLDS = {'.sa', '.com.sa', '.gov.sa', '.edu.sa', '.org.sa', '.net.sa', '.med.sa', '.sch.sa'}
 
@@ -365,14 +386,24 @@ def is_saudi_ip(ip_str, sa_networks):
 
 
 def resolve_domain(domain):
-    """Resolve a domain to its IP addresses."""
+    """
+    Resolve a domain to its IPv4 addresses.
+    Uses dnspython when available for speed and reliability.
+    Falls back to socket on ImportError.
+    Returns [] on any resolution failure — never raises.
+    """
+    resolver = _make_resolver()
+    if resolver is not None:
+        try:
+            answers = resolver.resolve(domain, 'A')
+            return [str(a) for a in answers]
+        except Exception:
+            return []
+    # Fallback: stdlib socket
     try:
-        results = socket.getaddrinfo(domain, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
-        ips = set()
-        for result in results:
-            ips.add(result[4][0])
-        return list(ips)
-    except (socket.gaierror, socket.timeout, OSError):
+        results = socket.getaddrinfo(domain, None, socket.AF_INET, socket.SOCK_STREAM)
+        return list({r[4][0] for r in results})
+    except Exception:
         return []
 
 

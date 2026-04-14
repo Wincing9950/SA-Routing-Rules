@@ -62,3 +62,33 @@ def test_known_saudi_minimum_count():
 
 def test_sa_keywords_minimum_count():
     assert len(SA_KEYWORDS) >= 70, f"Only {len(SA_KEYWORDS)} — need 70+"
+
+
+def test_resolve_domain_returns_list():
+    """resolve_domain must return a list (empty on failure, not raise)."""
+    from filter_crux_sa_domains import resolve_domain
+    # This should never raise — failures return []
+    result = resolve_domain('this-domain-definitely-does-not-exist-xyz123.com')
+    assert isinstance(result, list)
+    assert result == []
+
+def test_resolve_domain_uses_dnspython(monkeypatch):
+    """resolve_domain should use dns.resolver, not socket."""
+    import filter_crux_sa_domains as mod
+    called_with = []
+
+    class FakeAnswer:
+        def __str__(self): return '1.2.3.4'
+
+    class FakeResolver:
+        nameservers = []
+        timeout = 2
+        lifetime = 2
+        def resolve(self, domain, rtype):
+            called_with.append(domain)
+            return [FakeAnswer()]
+
+    monkeypatch.setattr(mod, '_make_resolver', lambda: FakeResolver())
+    result = mod.resolve_domain('example.sa')
+    assert called_with == ['example.sa']
+    assert '1.2.3.4' in result
