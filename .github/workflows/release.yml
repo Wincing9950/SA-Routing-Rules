@@ -32,22 +32,28 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.25"
+          cache: true
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
 
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y idn2
-          python3 -m pip install --break-system-packages dnspython geoip2 requests
+          python3 -m pip install -r requirements.txt
 
       - name: Install sing-box
         run: |
-          go install -v github.com/sagernet/sing-box/cmd/sing-box@latest
-          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+          SINGBOX_VER=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest \
+            | python3 -c "import json,sys; print(json.load(sys.stdin)['tag_name'][1:])")
+          curl -sSL "https://github.com/SagerNet/sing-box/releases/download/v${SINGBOX_VER}/sing-box-${SINGBOX_VER}-linux-amd64.tar.gz" \
+            | tar -xz --strip-components=1 -C /tmp "sing-box-${SINGBOX_VER}-linux-amd64/sing-box"
+          sudo mv /tmp/sing-box /usr/local/bin/sing-box
+          sing-box version
 
       - name: Set ENV variables
         run: |
@@ -133,6 +139,10 @@ jobs:
       # ============================================
       - name: Reverse DNS PTR sweep
         run: |
+          curl -sSL --max-time 10 \
+            https://raw.githubusercontent.com/blechschmidt/massdns/master/lists/resolvers.txt \
+            -o /tmp/resolvers.txt 2>/dev/null \
+            || echo -e "1.1.1.1\n8.8.8.8\n9.9.9.9" > /tmp/resolvers.txt
           chmod +x ./scripts/reverse-dns-sweep.sh
           ./scripts/reverse-dns-sweep.sh
 
@@ -141,8 +151,8 @@ jobs:
       # ============================================
       - name: Build geoip tool
         run: |
-          git clone --depth=1 https://github.com/Loyalsoldier/geoip.git geoip-tool-src
-          cd geoip-tool-src && go build -o ../geoip-bin . && cd ..
+          curl -sSL https://github.com/Loyalsoldier/geoip/releases/latest/download/geoip -o geoip-bin
+          chmod +x geoip-bin
 
       - name: Generate geoip config
         run: |

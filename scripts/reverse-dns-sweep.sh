@@ -40,7 +40,13 @@ echo "  -> Sampled ${IP_COUNT} IPs (one per /24)"
 awk -F. '{print $4"."$3"."$2"."$1".in-addr.arpa"}' /tmp/sa-sample-ips.txt \
   > /tmp/sa-ptr-queries.txt
 
-echo -e "1.1.1.1\n8.8.8.8\n9.9.9.9" > /tmp/resolvers.txt
+# Use pre-fetched resolver list if available (workflow downloads ~1700 resolvers),
+# otherwise fall back to a small set of well-known public resolvers.
+if [ ! -s /tmp/resolvers.txt ]; then
+  echo -e "1.1.1.1\n8.8.8.8\n9.9.9.9\n208.67.222.222" > /tmp/resolvers.txt
+fi
+RESOLVER_COUNT=$(wc -l < /tmp/resolvers.txt)
+echo "  -> Using ${RESOLVER_COUNT} resolvers"
 
 echo "  -> Running massdns on ${IP_COUNT} queries..."
 touch sa-ips/sa-ptr-domains.txt
