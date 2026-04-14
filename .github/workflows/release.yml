@@ -21,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      MAXMIND_LICENSE_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
 
     steps:
       - name: Checkout repository
@@ -82,8 +84,6 @@ jobs:
           
           echo "MaxMind GeoLite2 databases downloaded successfully"
           rm -rf geolite2-tmp geolite2-country.zip geolite2-asn.zip
-        env:
-          MAXMIND_LICENSE_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
 
       - name: Create placeholder GeoLite2 files (if no MaxMind key)
         if: ${{ env.MAXMIND_LICENSE_KEY == '' }}
@@ -95,8 +95,6 @@ jobs:
           echo "network,geoname_id,registered_country_geoname_id,represented_country_geoname_id,is_anonymous_proxy,is_satellite_provider" > geolite2/GeoLite2-Country-Blocks-IPv6.csv
           echo "autonomous_system_number,autonomous_system_organization,network" > geolite2/GeoLite2-ASN-Blocks-IPv4.csv
           echo "autonomous_system_number,autonomous_system_organization,network" > geolite2/GeoLite2-ASN-Blocks-IPv6.csv
-        env:
-          MAXMIND_LICENSE_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
 
       # ============================================
       # STEP 3: Generate Saudi Arabia Domain List
