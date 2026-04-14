@@ -11,10 +11,14 @@ Rate-limited to ~3 req/s. Run weekly.
 Output: domains/sa-ct.txt
 """
 
+import re
 import sys
 import time
 import argparse
 import requests
+
+# Per-label geosite validation: no underscores, no leading/trailing hyphens
+_LABEL_RE = re.compile(r'^[a-z0-9]([a-z0-9\-]*[a-z0-9])?$')
 
 SA_TLD_PATTERNS = [
     '%.sa',
@@ -37,12 +41,22 @@ REQUEST_DELAY = 0.4
 
 
 def normalize_domain(domain):
-    """Lowercase, strip trailing dot and wildcard prefix."""
+    """Lowercase, strip trailing dot and wildcard prefix.
+
+    Returns '' for any domain that would be rejected by v2fly geosite:
+    underscore labels, leading/trailing hyphens, empty labels, single-label,
+    wildcards after stripping, or anything exceeding length limits.
+    """
     if not domain:
         return ''
     d = domain.strip().lower().rstrip('.')
     if d.startswith('*.'):
         d = d[2:]
+    if not d or '.' not in d or len(d) > 253:
+        return ''
+    for label in d.split('.'):
+        if not label or len(label) > 63 or not _LABEL_RE.match(label):
+            return ''
     return d
 
 

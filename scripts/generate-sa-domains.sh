@@ -121,6 +121,7 @@ cat sa-banks.txt sa-curated.txt sa-gov.txt sa-services.txt \
   grep -v '^#' | \
   grep -v '^$' | \
   tr '[:upper:]' '[:lower:]' | \
+  python3 ./scripts/sanitize-domains.py | \
   LC_ALL=C sort -u > sa-all-tmp.txt
 
 # Add the .sa TLD itself and its IDN equivalent
