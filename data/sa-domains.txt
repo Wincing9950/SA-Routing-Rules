@@ -29,7 +29,6 @@ almowaten.net
 ajel.sa
 twasul.info
 akhbaar24.com
-sabq.org
 slaati.com
 
 # === Saudi Telecom & ISPs ===
@@ -68,7 +67,6 @@ lugmety.com
 # === Saudi Financial Services ===
 sama.gov.sa
 tadawul.com.sa
-alrajhibank.com.sa
 alahli.com
 sabb.com
 riyadbank.com
@@ -138,7 +136,6 @@ mbc.net
 shahid.net
 rotana.net
 anghami.com
-srmg.com
 telfaz11.com
 
 # === Saudi Sports ===
@@ -153,7 +150,6 @@ alnassrfc.com
 smsa.com
 aramex.com
 naqel.com.sa
-spl.com.sa
 zajil.com
 fetchr.us
 
