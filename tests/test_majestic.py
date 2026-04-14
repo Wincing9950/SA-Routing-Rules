@@ -17,29 +17,34 @@ HEADER = ['GlobalRank', 'TldRank', 'Domain', 'TLD', 'RefSubNets',
 
 
 def _row(rank, domain, tld):
+    """
+    Build a fake Majestic Million CSV row.
+    The real CSV has Domain=full-domain-including-TLD (e.g. 'google.com') and
+    TLD=just-the-tld (e.g. 'com'). Callers must pass the full domain as `domain`.
+    """
     return dict(zip(HEADER, [str(rank), '1', domain, tld, '10', '8', '', '', '', '', '', '']))
 
 
 def test_sa_tld_always_included():
-    assert classify_majestic_row(_row(500000, 'alrajhi', 'sa')) == 'tld'
+    assert classify_majestic_row(_row(500000, 'alrajhi.sa', 'sa')) == 'tld'
 
 def test_com_sa_included():
-    assert classify_majestic_row(_row(1, 'stc', 'com.sa')) is not None
+    assert classify_majestic_row(_row(1, 'stc.com.sa', 'com.sa')) is not None
 
 def test_keyword_match():
-    assert classify_majestic_row(_row(10000, 'saudia-airlines', 'com')) == 'keyword'
+    assert classify_majestic_row(_row(10000, 'saudia-airlines.com', 'com')) == 'keyword'
 
 def test_unknown_not_included():
-    assert classify_majestic_row(_row(100000, 'randomdomain', 'com')) is None
+    assert classify_majestic_row(_row(100000, 'randomdomain.com', 'com')) is None
 
 def test_known_sa_domain():
-    assert classify_majestic_row(_row(5000, 'noon', 'com')) == 'known'
+    assert classify_majestic_row(_row(5000, 'noon.com', 'com')) == 'known'
 
 def test_global_service_excluded():
-    assert classify_majestic_row(_row(1, 'google', 'com')) is None
+    assert classify_majestic_row(_row(1, 'google.com', 'com')) is None
 
 def test_top_50k_unknown_dns_check():
-    assert classify_majestic_row(_row(25000, 'unknowndomain123', 'com')) == 'dns_check'
+    assert classify_majestic_row(_row(25000, 'unknowndomain123.com', 'com')) == 'dns_check'
 
 def test_low_rank_unknown_excluded():
-    assert classify_majestic_row(_row(500000, 'unknowndomain123', 'com')) is None
+    assert classify_majestic_row(_row(500000, 'unknowndomain123.com', 'com')) is None

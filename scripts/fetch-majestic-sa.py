@@ -49,9 +49,13 @@ def classify_majestic_row(row):
     """
     Return classification string or None to skip.
     Returns: 'tld' | 'known' | 'keyword' | 'dns_check' | None
+
+    NOTE: The Majestic Million 'Domain' column already contains the full domain
+    including TLD (e.g., 'google.com'). The 'TLD' column is a separate field
+    (e.g., 'com') used only for TLD membership checks — NOT for domain construction.
     """
-    domain = row.get('Domain', '').lower().strip()
-    tld = row.get('TLD', '').lower().strip()
+    domain = row.get('Domain', '').lower().strip()   # full domain, e.g. 'google.com'
+    tld = row.get('TLD', '').lower().strip()          # TLD only, e.g. 'com'
     try:
         rank = int(row.get('GlobalRank', 9_999_999))
     except (ValueError, TypeError):
@@ -60,12 +64,14 @@ def classify_majestic_row(row):
     if not domain:
         return None
 
-    full = f"{domain}.{tld}" if tld else domain
+    # 'domain' already contains the full domain — do not append 'tld' again.
+    full = domain
 
     if is_global_exclude(full):
         return None
 
-    if tld in SA_TLDS:
+    # Check SA TLD using the separate TLD column value.
+    if tld in SA_TLDS or domain.endswith('.sa'):
         return 'tld'
 
     if is_known_saudi(full):
@@ -104,8 +110,8 @@ def filter_majestic(rows, sa_ip_file=None, resolve_dns=False, max_workers=100):
         if cls is None:
             continue
         domain = row.get('Domain', '').lower()
-        tld = row.get('TLD', '').lower()
-        full = f"{domain}.{tld}" if tld else domain
+        # Domain column already contains the full domain — do not append TLD again.
+        full = domain
 
         if cls == 'dns_check':
             dns_candidates.append(full)

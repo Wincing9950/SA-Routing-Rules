@@ -342,11 +342,23 @@ def is_global_exclude(domain):
 
 
 def has_sa_keyword(domain):
-    """Check if domain contains Saudi-specific keywords."""
-    domain_lower = domain.lower()
-    for kw in SA_KEYWORDS:
-        if kw in domain_lower:
-            return True
+    """Check if domain labels contain Saudi-specific keywords at word boundaries.
+
+    Matches keywords only at the start, end, or hyphen boundaries of each
+    dot-separated label — never as free substrings. This prevents false positives
+    such as 'hail' matching 'thailand', 'ksa' matching 'aksaray', or 'baha'
+    matching 'bahamas'.
+
+    Examples that MATCH:  hail.gov.sa, ksa.com, al-baha.sa, riyadh-bank.com
+    Examples that DON'T:  thailand.com, aksaray.gov.tr, bahamas.gov.bs
+    """
+    labels = domain.lower().split('.')
+    for label in labels:
+        # Split label further on hyphens to get individual word tokens
+        tokens = label.split('-')
+        for kw in SA_KEYWORDS:
+            if kw in tokens:
+                return True
     return False
 
 
