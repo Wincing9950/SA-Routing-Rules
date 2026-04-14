@@ -72,9 +72,44 @@ if command -v python3 &>/dev/null && [ -f ./scripts/filter_crux_sa_domains.py ];
   fi
 fi
 
+# --- Source 7: Certificate Transparency (crt.sh) ---
+echo "  -> Fetching Certificate Transparency domains..."
+if [ -f ./scripts/fetch-ct-domains.py ]; then
+  python3 ./scripts/fetch-ct-domains.py -o sa-ct.txt 2>/dev/null || true
+  CT_COUNT=$(grep -v '^#' sa-ct.txt 2>/dev/null | grep -v '^$' | wc -l || echo 0)
+  echo "     Found ${CT_COUNT} CT domains"
+else
+  touch sa-ct.txt
+fi
+
+# --- Source 8: Majestic Million ---
+echo "  -> Filtering Majestic Million..."
+if [ -f ./scripts/fetch-majestic-sa.py ]; then
+  MAJESTIC_DNS_FLAG=""
+  if [ "${SKIP_DNS:-false}" = "false" ] && [ -f ./sa-ips/sa-all.txt ]; then
+    MAJESTIC_DNS_FLAG="--resolve-dns --ip-file ./sa-ips/sa-all.txt"
+  fi
+  python3 ./scripts/fetch-majestic-sa.py $MAJESTIC_DNS_FLAG -o sa-majestic.txt 2>/dev/null || true
+  MAJ_COUNT=$(grep -v '^#' sa-majestic.txt 2>/dev/null | grep -v '^$' | wc -l || echo 0)
+  echo "     Found ${MAJ_COUNT} Majestic SA domains"
+else
+  touch sa-majestic.txt
+fi
+
+# --- Source 9: Reverse DNS PTR hostnames ---
+echo "  -> Loading PTR hostnames from reverse DNS sweep..."
+if [ -f ./sa-ips/sa-ptr-domains.txt ]; then
+  PTR_COUNT=$(wc -l < sa-ips/sa-ptr-domains.txt)
+  echo "     Found ${PTR_COUNT} PTR domains"
+  cat sa-ips/sa-ptr-domains.txt > sa-ptr.txt
+else
+  touch sa-ptr.txt
+fi
+
 # --- Combine all sources ---
 echo "  -> Combining all domain sources..."
-cat sa-banks.txt sa-curated.txt sa-gov.txt sa-services.txt sa-crux.txt | \
+cat sa-banks.txt sa-curated.txt sa-gov.txt sa-services.txt \
+    sa-crux.txt sa-ct.txt sa-majestic.txt sa-ptr.txt | \
   sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' | \
   grep -v '^#' | \
   grep -v '^$' | \
@@ -98,4 +133,5 @@ echo "  -> Generated $(wc -l < domains/sa.txt) unique Saudi domains"
 echo "==> Done generating Saudi Arabia domain list"
 
 # Cleanup temp files
-rm -f sa-banks.txt sa-curated.txt sa-gov.txt sa-services.txt sa-crux.txt sa-crux-live.txt sa-all-tmp.txt
+rm -f sa-banks.txt sa-curated.txt sa-gov.txt sa-services.txt \
+      sa-crux.txt sa-crux-live.txt sa-ct.txt sa-majestic.txt sa-ptr.txt sa-all-tmp.txt

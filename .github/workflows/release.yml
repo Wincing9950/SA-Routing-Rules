@@ -42,6 +42,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y idn2
+          python3 -m pip install --break-system-packages dnspython geoip2 requests
 
       - name: Install sing-box
         run: |
@@ -53,6 +54,7 @@ jobs:
           echo "RELEASE_NAME=$(date +%Y%m%d%H%M)" >> $GITHUB_ENV
           echo "TAG_NAME=$(date +%Y%m%d%H%M)" >> $GITHUB_ENV
           echo "RELEASE_DATE=$(date +'%A %F %T %Z')" >> $GITHUB_ENV
+          echo "SKIP_DNS=${{ inputs.SKIP_DNS || 'false' }}" >> $GITHUB_ENV
 
       - name: Create directories
         run: mkdir -p release rule-set domains sa-ips karing-out
@@ -64,6 +66,14 @@ jobs:
         run: |
           chmod +x ./scripts/generate-sa-ips.sh
           ./scripts/generate-sa-ips.sh
+
+      # ============================================
+      # STEP 1b: Fetch BGP-announced SA AS prefixes
+      # ============================================
+      - name: Fetch BGP-announced SA AS prefixes
+        run: |
+          chmod +x ./scripts/fetch-sa-as-prefixes.sh
+          ./scripts/fetch-sa-as-prefixes.sh
 
       # ============================================
       # STEP 2: Download MaxMind GeoLite2 databases
@@ -105,6 +115,26 @@ jobs:
           ./scripts/generate-sa-domains.sh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ============================================
+      # STEP 3b: Install massdns for PTR sweep (optional)
+      # ============================================
+      - name: Install massdns (for reverse DNS sweep)
+        run: |
+          sudo apt-get install -y massdns 2>/dev/null || \
+          (git clone --depth=1 https://github.com/blechschmidt/massdns.git /tmp/massdns-src \
+           && cd /tmp/massdns-src && make -j4 \
+           && sudo cp bin/massdns /usr/local/bin/ \
+           && echo "massdns compiled from source") || \
+          echo "massdns unavailable — PTR sweep will be skipped"
+
+      # ============================================
+      # STEP 3c: Reverse DNS sweep on SA IP space
+      # ============================================
+      - name: Reverse DNS PTR sweep
+        run: |
+          chmod +x ./scripts/reverse-dns-sweep.sh
+          ./scripts/reverse-dns-sweep.sh
 
       # ============================================
       # STEP 4: Build geoip.dat and Country.mmdb
