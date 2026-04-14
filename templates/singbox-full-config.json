@@ -1,0 +1,57 @@
+{
+  "log": { "level": "warn" },
+  "dns": {
+    "servers": [
+      { "tag": "remote", "address": "tls://1.1.1.1" },
+      { "tag": "local",  "address": "https://dns.alidns.com/dns-query", "detour": "direct" }
+    ],
+    "rules": [
+      { "rule_set": "geosite-sa", "server": "local" }
+    ]
+  },
+  "inbounds": [
+    {
+      "type": "tun",
+      "tag": "tun-in",
+      "inet4_address": "172.19.0.1/30",
+      "auto_route": true,
+      "strict_route": true
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "YOUR_PROXY_TYPE",
+      "tag": "proxy",
+      "server": "YOUR_PROXY_SERVER",
+      "server_port": 443
+    },
+    { "type": "direct", "tag": "direct" },
+    { "type": "block",  "tag": "block"  }
+  ],
+  "route": {
+    "rule_set": [
+      {
+        "type": "remote",
+        "tag": "geosite-sa",
+        "format": "binary",
+        "url": "https://github.com/YOUR_GITHUB_USER/SA-Routing-Rules/releases/latest/download/geosite-sa.srs",
+        "download_detour": "direct",
+        "update_interval": "24h"
+      },
+      {
+        "type": "remote",
+        "tag": "geoip-sa",
+        "format": "binary",
+        "url": "https://github.com/YOUR_GITHUB_USER/SA-Routing-Rules/releases/latest/download/geoip-sa.srs",
+        "download_detour": "direct",
+        "update_interval": "24h"
+      }
+    ],
+    "rules": [
+      { "rule_set": "geosite-sa", "outbound": "direct" },
+      { "rule_set": "geoip-sa",   "outbound": "direct" },
+      { "outbound": "proxy" }
+    ],
+    "final": "proxy"
+  }
+}
