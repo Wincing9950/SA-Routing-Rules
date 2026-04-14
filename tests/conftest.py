@@ -2,6 +2,7 @@ import os
 import pytest
 import importlib.util
 import sys
+import ipaddress
 
 FIXTURES_DIR = os.path.join(os.path.dirname(__file__), "fixtures")
 
@@ -15,7 +16,6 @@ def sample_sa_ips():
 
 @pytest.fixture
 def sample_sa_networks():
-    import ipaddress
     cidrs = ["83.97.160.0/19", "5.1.0.0/22", "46.62.0.0/16"]
     return [ipaddress.ip_network(c) for c in cidrs]
 
@@ -36,5 +36,5 @@ try:
         'generate_karing_config',
         os.path.join(_scripts_dir, 'generate-karing-config.py')
     )
-except Exception:
+except (FileNotFoundError, ImportError):
     generate_karing_config_mod = None
