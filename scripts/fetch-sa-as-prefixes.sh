@@ -29,7 +29,7 @@ trap "rm -f $TMP_FILE" EXIT
 for asn in $SA_ASES; do
   echo "  -> Querying AS${asn}..."
   RESP=$(curl -s --max-time 15 \
-    "https://stat.ripe.net/api/v2/announced-prefixes?resource=AS${asn}" 2>/dev/null || echo '{}')
+    "https://stat.ripe.net/data/announced-prefixes/data.json?resource=AS${asn}" 2>/dev/null || echo '{}')
 
   echo "$RESP" | python3 -c "
 import json, sys

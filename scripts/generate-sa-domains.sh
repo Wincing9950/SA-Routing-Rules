@@ -43,8 +43,15 @@ fi
 # --- Source 6: Try to fetch latest CrUX data from upstream ---
 echo "  -> Checking for updated CrUX data..."
 if command -v python3 &>/dev/null && [ -f ./scripts/filter_crux_sa_domains.py ]; then
-  CRUX_URL="https://raw.githubusercontent.com/InternetHealthReport/crux-top-lists-country/refs/heads/main/data/SA/latest.csv.gz"
-  if curl -sSL --fail "$CRUX_URL" -o /tmp/crux-sa-latest.csv.gz 2>/dev/null; then
+  # Find the latest YYYYMM.csv.gz in the InternetHealthReport CrUX country repo
+  CRUX_LATEST=$(curl -s --max-time 10 \
+    "https://api.github.com/repos/InternetHealthReport/crux-top-lists-country/contents/data/country/sa" \
+    | python3 -c "import json,sys; items=json.load(sys.stdin); print(sorted([i['name'] for i in items if i['name'].endswith('.csv.gz')])[-1])" 2>/dev/null || echo "")
+  CRUX_URL=""
+  if [ -n "$CRUX_LATEST" ]; then
+    CRUX_URL="https://raw.githubusercontent.com/InternetHealthReport/crux-top-lists-country/main/data/country/sa/${CRUX_LATEST}"
+  fi
+  if [ -n "$CRUX_URL" ] && curl -sSL --fail "$CRUX_URL" -o /tmp/crux-sa-latest.csv.gz 2>/dev/null; then
     gunzip -f /tmp/crux-sa-latest.csv.gz 2>/dev/null || true
     if [ -f /tmp/crux-sa-latest.csv ] && [ -s /tmp/crux-sa-latest.csv ]; then
       echo "     Running CrUX filter pipeline..."
