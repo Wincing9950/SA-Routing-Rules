@@ -18,6 +18,11 @@ on:
         required: false
         type: boolean
         default: false
+      RUN_HTTP_PROBE:
+        description: "Run HTTP probe for non-.sa domain classification (slow, makes external requests)"
+        required: false
+        type: boolean
+        default: false
   schedule:
     - cron: "0 3 * * 0"  # Weekly on Sunday at 03:00 UTC
 
@@ -28,6 +33,7 @@ jobs:
       contents: write
     env:
       MAXMIND_LICENSE_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
+      CF_API_KEY: ${{ secrets.CF_API_KEY }}
 
     steps:
       - name: Checkout repository
@@ -73,6 +79,7 @@ jobs:
           fi
           # PTR sweep is opt-in only (always 0 results for SA; skipped on cron and by default on dispatch).
           echo "RUN_PTR_SWEEP=${{ inputs.RUN_PTR_SWEEP || 'false' }}" >> $GITHUB_ENV
+          echo "RUN_HTTP_PROBE=${{ inputs.RUN_HTTP_PROBE || 'false' }}" >> $GITHUB_ENV
 
       - name: Create directories
         run: mkdir -p release rule-set domains sa-ips karing-out
@@ -133,6 +140,8 @@ jobs:
           ./scripts/generate-sa-domains.sh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+          RUN_HTTP_PROBE: ${{ env.RUN_HTTP_PROBE }}
 
       # ============================================
       # STEP 3b: Install massdns for PTR sweep (opt-in only)
