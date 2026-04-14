@@ -46,9 +46,9 @@ except Exception:
 done
 
 # Sort, deduplicate, remove empty lines
-grep -v '^$' "$TMP_FILE" | LC_ALL=C sort -u > sa-ips/sa-bgp-prefixes.txt
+{ grep -v '^$' "$TMP_FILE" || true; } | LC_ALL=C sort -u > sa-ips/sa-bgp-prefixes.txt
 
-IPV4_COUNT=$(grep -c '\.' sa-ips/sa-bgp-prefixes.txt 2>/dev/null || echo 0)
-IPV6_COUNT=$(grep -c ':' sa-ips/sa-bgp-prefixes.txt 2>/dev/null || echo 0)
+IPV4_COUNT=$(grep -c '\.' sa-ips/sa-bgp-prefixes.txt 2>/dev/null) || IPV4_COUNT=0
+IPV6_COUNT=$(grep -c ':' sa-ips/sa-bgp-prefixes.txt 2>/dev/null) || IPV6_COUNT=0
 echo "  -> BGP prefixes: ${IPV4_COUNT} IPv4, ${IPV6_COUNT} IPv6"
 echo "==> Done fetching BGP prefixes"
