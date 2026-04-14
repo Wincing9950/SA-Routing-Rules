@@ -60,7 +60,12 @@ jobs:
           echo "RELEASE_NAME=$(date +%Y%m%d%H%M)" >> $GITHUB_ENV
           echo "TAG_NAME=$(date +%Y%m%d%H%M)" >> $GITHUB_ENV
           echo "RELEASE_DATE=$(date +'%A %F %T %Z')" >> $GITHUB_ENV
-          echo "SKIP_DNS=${{ inputs.SKIP_DNS || 'false' }}" >> $GITHUB_ENV
+          # Scheduled runs skip DNS resolution (saves ~40 min); manual runs use the input (default false).
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "SKIP_DNS=true" >> $GITHUB_ENV
+          else
+            echo "SKIP_DNS=${{ inputs.SKIP_DNS || 'false' }}" >> $GITHUB_ENV
+          fi
 
       - name: Create directories
         run: mkdir -p release rule-set domains sa-ips karing-out
@@ -149,9 +154,18 @@ jobs:
       # ============================================
       # STEP 4: Build geoip.dat and Country.mmdb
       # ============================================
+      - name: Cache geoip tool binary
+        id: cache-geoip-bin
+        uses: actions/cache@v4
+        with:
+          path: geoip-bin
+          key: geoip-tool-${{ runner.os }}-v1
+
       - name: Build geoip tool
+        if: steps.cache-geoip-bin.outputs.cache-hit != 'true'
         run: |
-          curl -sSL https://github.com/Loyalsoldier/geoip/releases/latest/download/geoip -o geoip-bin
+          git clone --depth=1 https://github.com/Loyalsoldier/geoip.git geoip-tool-src
+          cd geoip-tool-src && go build -o ../geoip-bin . && cd ..
           chmod +x geoip-bin
 
       - name: Generate geoip config
