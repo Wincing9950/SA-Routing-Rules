@@ -43,17 +43,18 @@ awk -F. '{print $4"."$3"."$2"."$1".in-addr.arpa"}' /tmp/sa-sample-ips.txt \
 echo -e "1.1.1.1\n8.8.8.8\n9.9.9.9" > /tmp/resolvers.txt
 
 echo "  -> Running massdns on ${IP_COUNT} queries..."
+touch sa-ips/sa-ptr-domains.txt
 massdns -r /tmp/resolvers.txt \
         -t PTR \
         --retry REFUSED \
         -o S \
-        /tmp/sa-ptr-queries.txt 2>/dev/null | \
-  grep -v 'SERVFAIL\|NXDOMAIN\|NOERROR.*0 answer' | \
-  awk '/IN PTR/ {gsub(/\.$/, "", $NF); print $NF}' | \
-  grep -v '^$' | \
-  grep '\.' | \
-  LC_ALL=C sort -u > sa-ips/sa-ptr-domains.txt
+        /tmp/sa-ptr-queries.txt 2>/dev/null \
+  | { grep -v 'SERVFAIL\|NXDOMAIN\|NOERROR.*0 answer' || true; } \
+  | awk '/IN PTR/ {gsub(/\.$/, "", $NF); print $NF}' \
+  | { grep -v '^$' || true; } \
+  | { grep '\.' || true; } \
+  | LC_ALL=C sort -u > sa-ips/sa-ptr-domains.txt || true
 
-PTR_COUNT=$(wc -l < sa-ips/sa-ptr-domains.txt)
+PTR_COUNT=$(wc -l < sa-ips/sa-ptr-domains.txt) || PTR_COUNT=0
 echo "  -> Discovered ${PTR_COUNT} PTR hostnames"
 echo "==> Reverse DNS sweep complete"
