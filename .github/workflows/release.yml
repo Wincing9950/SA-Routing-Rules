@@ -279,6 +279,31 @@ jobs:
           cd ..
 
       # ============================================
+      # STEP 5b: Build standalone sa.dat (ext:sa.dat:sa)
+      # ============================================
+      - name: Build standalone sa.dat
+        run: |
+          # Build minimal environment with only the sa data file
+          mkdir -p /tmp/sa-dat-build/data
+          cp v2ray-geosite/go.mod v2ray-geosite/go.sum /tmp/sa-dat-build/
+          cp v2ray-geosite/*.go /tmp/sa-dat-build/ 2>/dev/null || true
+          cp -r v2ray-geosite/vendor /tmp/sa-dat-build/ 2>/dev/null || true
+          cp domains/sa.txt /tmp/sa-dat-build/data/sa
+
+          cd /tmp/sa-dat-build
+          mkdir -p output
+          go run . --outputdir=output --outputname=sa.dat 2>/dev/null || \
+            go run github.com/v2fly/domain-list-community --outputdir=output --outputname=sa.dat
+
+          if [ -f output/sa.dat ]; then
+            cp output/sa.dat $GITHUB_WORKSPACE/release/sa.dat
+            SA_SIZE=$(wc -c < output/sa.dat)
+            echo "  sa.dat built: ${SA_SIZE} bytes"
+          else
+            echo "WARNING: sa.dat build failed — monolithic geosite.dat still available"
+          fi
+
+      # ============================================
       # STEP 6: Build sing-box Rule-Set (.srs)
       # ============================================
       - name: Generate GeoSite rule-set (.srs)
@@ -374,6 +399,7 @@ jobs:
           | geoip.dat | v2ray GeoIP DAT | V2Ray/Xray-core |
           | geoip-lite.dat | v2ray GeoIP DAT (SA+private) | V2Ray/Xray-core |
           | geosite.dat | v2ray GeoSite DAT | V2Ray/Xray-core |
+          | sa.dat | v2ray GeoSite DAT (SA only) | Xray-core: ext:sa.dat:sa |
           | Country.mmdb | MaxMind MMDB | sing-box/Clash |
           | Country-lite.mmdb | MaxMind MMDB (SA+private) | sing-box/Clash |
           | SA_Diversion_Rules_Karing_App.json | Karing Config | Karing App |
