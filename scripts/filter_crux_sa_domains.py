@@ -81,7 +81,10 @@ GLOBAL_EXCLUDES = {
     
     # E-commerce (Global)
     'ebay.com', 'aliexpress.com', 'alibaba.com', 'wish.com',
-    
+
+    # UAE/non-SA fashion & retail (popular in SA but not Saudi-owned)
+    'ounass.com', 'sivvi.com', 'fordeal.com',
+
     # Streaming (Global)
     'netflix.com', 'nflxvideo.net', 'nflximg.net', 'nflxext.com',
     'spotify.com', 'scdn.co', 'spotifycdn.com',
