@@ -1,9 +1,6 @@
 # Saudi Arabia Services and Apps Domains
 # Popular Saudi apps, services, and platforms
 
-# === Super Apps ===
-tamm.abudhabi
-
 # === Payment & Fintech ===
 mada.com.sa
 sadad.com
@@ -24,12 +21,7 @@ jeeny.com
 
 # === Grocery & Shopping ===
 xcite.com
-namshi.com
-ounass.com
-sivvi.com
 mumzworld.com
-fordeal.com
-shein.com
 
 # === Saudi Streaming & Content ===
 myrkott.com
@@ -68,7 +60,7 @@ tawuniya.com.sa
 bupa.com.sa
 medgulf.com.sa
 malath.com.sa
-walaa.com
+walaa.com.sa
 alrajhitakaful.com
 
 # === Saudi Automotive ===
