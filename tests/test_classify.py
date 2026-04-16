@@ -58,7 +58,7 @@ def test_score_of_two_is_now_excluded():
         return {'geo_blocked': False, 'score': 2,
                 'signals': {'arabic_content': True, 'sar_currency': True},
                 'error': None}
-    result = clf.classify_domain('arabnews.com', MOCK_EXCLUSION, MOCK_ENTITIES, probe_fn=fake_probe)
+    result = clf.classify_domain('somesite.com', MOCK_EXCLUSION, MOCK_ENTITIES, probe_fn=fake_probe)
     assert result['verdict'] == 'EXCLUDE'
 
 
