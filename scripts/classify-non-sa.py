@@ -14,7 +14,7 @@ import argparse
 import sys
 import os
 
-REVIEW_THRESHOLD = 2
+REVIEW_THRESHOLD = 3
 
 
 def _load_set(path: str) -> set[str]:
