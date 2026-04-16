@@ -17,3 +17,22 @@ stv.tv # Saudi Television (state broadcaster, Saudi Media Authority)
 saudiairlines.com # Saudia (state airline, flag carrier)
 flyadeal.com # flyadeal (Saudia subsidiary, low-cost carrier)
 flynas.com # flynas (Nasair, private Saudi airline)
+
+# Fintech & Payments
+tabby.ai # Tabby (SAMA-licensed BNPL; SA is primary regulated market)
+tamara.co # Tamara (Saudi BNPL unicorn, $2.4B backed; SA primary market)
+
+# Food Delivery
+hungerstation.com # HungerStation (SA-only food delivery, Delivery Hero SA subsidiary)
+mrsool.co # Mrsool (SA delivery super-app; Riyadh-headquartered)
+
+# Ride Hailing
+careem.com # Careem (dominant SA ride/delivery; SA is largest single market)
+
+# Media & Content
+shahid.net # Shahid (MBC Group streaming; SA-exclusive content, Saudi state broadcaster)
+thmanyah.com # Thmanyah (Saudi podcast/media platform; Riyadh-based)
+srmg.com # SRMG (Saudi Research & Media Group; Saudi state-linked media)
+
+# Travel
+almosafer.com # Almosafer (Seera Group, Tadawul:1810; Saudi-registered CR: 1010363465)
