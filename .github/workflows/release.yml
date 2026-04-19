@@ -12,7 +12,17 @@ on:
         description: "Skip DNS resolution for CrUX domains (faster build)"
         required: false
         type: boolean
-        default: true
+        default: false
+      RUN_PTR_SWEEP:
+        description: "Run reverse DNS PTR sweep (slow, usually yields 0 results for SA)"
+        required: false
+        type: boolean
+        default: false
+      RUN_HTTP_PROBE:
+        description: "Run HTTP probe for non-.sa domain classification (slow, makes external requests)"
+        required: false
+        type: boolean
+        default: false
   schedule:
     - cron: "0 3 * * 0"  # Weekly on Sunday at 03:00 UTC
 
@@ -21,6 +31,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      MAXMIND_LICENSE_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
+      CF_API_KEY: ${{ secrets.CF_API_KEY }}
 
     steps:
       - name: Checkout repository
@@ -29,28 +42,54 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "stable"
+          cache: true
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
 
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y idn2
+          python3 -m pip install -r requirements.txt
 
       - name: Install sing-box
         run: |
-          go install -v github.com/sagernet/sing-box/cmd/sing-box@latest
-          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+          SINGBOX_VER=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases/latest \
+            | python3 -c "import json,sys; print(json.load(sys.stdin)['tag_name'][1:])")
+          curl -sSL "https://github.com/SagerNet/sing-box/releases/download/v${SINGBOX_VER}/sing-box-${SINGBOX_VER}-linux-amd64.tar.gz" \
+            | tar -xz --strip-components=1 -C /tmp "sing-box-${SINGBOX_VER}-linux-amd64/sing-box"
+          sudo mv /tmp/sing-box /usr/local/bin/sing-box
+          sing-box version
+
+      - name: Install mihomo (for MRS compilation)
+        run: |
+          MIHOMO_VER=$(curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases/latest \
+            | python3 -c "import json,sys; print(json.load(sys.stdin)['tag_name'][1:])")
+          curl -sSL "https://github.com/MetaCubeX/mihomo/releases/download/v${MIHOMO_VER}/mihomo-linux-amd64-v${MIHOMO_VER}.gz" \
+            | gunzip > /tmp/mihomo
+          sudo mv /tmp/mihomo /usr/local/bin/mihomo
+          sudo chmod +x /usr/local/bin/mihomo
+          mihomo -v
 
       - name: Set ENV variables
         run: |
           echo "RELEASE_NAME=$(date +%Y%m%d%H%M)" >> $GITHUB_ENV
           echo "TAG_NAME=$(date +%Y%m%d%H%M)" >> $GITHUB_ENV
           echo "RELEASE_DATE=$(date +'%A %F %T %Z')" >> $GITHUB_ENV
+          # Scheduled runs skip DNS resolution (saves ~40 min); manual runs use the input (default false).
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "SKIP_DNS=true" >> $GITHUB_ENV
+          else
+            echo "SKIP_DNS=${{ inputs.SKIP_DNS || 'false' }}" >> $GITHUB_ENV
+          fi
+          # PTR sweep is opt-in only (always 0 results for SA; skipped on cron and by default on dispatch).
+          echo "RUN_PTR_SWEEP=${{ inputs.RUN_PTR_SWEEP || 'false' }}" >> $GITHUB_ENV
+          echo "RUN_HTTP_PROBE=${{ inputs.RUN_HTTP_PROBE || 'false' }}" >> $GITHUB_ENV
 
       - name: Create directories
         run: mkdir -p release rule-set domains sa-ips karing-out
@@ -62,6 +101,14 @@ jobs:
         run: |
           chmod +x ./scripts/generate-sa-ips.sh
           ./scripts/generate-sa-ips.sh
+
+      # ============================================
+      # STEP 1b: Fetch BGP-announced SA AS prefixes
+      # ============================================
+      - name: Fetch BGP-announced SA AS prefixes
+        run: |
+          chmod +x ./scripts/fetch-sa-as-prefixes.sh
+          ./scripts/fetch-sa-as-prefixes.sh
 
       # ============================================
       # STEP 2: Download MaxMind GeoLite2 databases
@@ -82,8 +129,6 @@ jobs:
           
           echo "MaxMind GeoLite2 databases downloaded successfully"
           rm -rf geolite2-tmp geolite2-country.zip geolite2-asn.zip
-        env:
-          MAXMIND_LICENSE_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
 
       - name: Create placeholder GeoLite2 files (if no MaxMind key)
         if: ${{ env.MAXMIND_LICENSE_KEY == '' }}
@@ -95,8 +140,6 @@ jobs:
           echo "network,geoname_id,registered_country_geoname_id,represented_country_geoname_id,is_anonymous_proxy,is_satellite_provider" > geolite2/GeoLite2-Country-Blocks-IPv6.csv
           echo "autonomous_system_number,autonomous_system_organization,network" > geolite2/GeoLite2-ASN-Blocks-IPv4.csv
           echo "autonomous_system_number,autonomous_system_organization,network" > geolite2/GeoLite2-ASN-Blocks-IPv6.csv
-        env:
-          MAXMIND_LICENSE_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
 
       # ============================================
       # STEP 3: Generate Saudi Arabia Domain List
@@ -107,14 +150,59 @@ jobs:
           ./scripts/generate-sa-domains.sh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+          RUN_HTTP_PROBE: ${{ env.RUN_HTTP_PROBE }}
+
+      # ============================================
+      # STEP 3b: Install massdns for PTR sweep (opt-in only)
+      # ============================================
+      - name: Cache massdns binary
+        id: cache-massdns
+        if: ${{ env.RUN_PTR_SWEEP == 'true' }}
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/bin/massdns
+          key: massdns-${{ runner.os }}-v1
+
+      - name: Install massdns
+        if: ${{ env.RUN_PTR_SWEEP == 'true' && steps.cache-massdns.outputs.cache-hit != 'true' }}
+        run: |
+          sudo apt-get install -y massdns 2>/dev/null || \
+          (git clone --depth=1 https://github.com/blechschmidt/massdns.git /tmp/massdns-src \
+           && cd /tmp/massdns-src && make -j4 \
+           && sudo cp bin/massdns /usr/local/bin/ \
+           && echo "massdns compiled from source") || \
+          echo "massdns unavailable — PTR sweep will be skipped"
+
+      # ============================================
+      # STEP 3c: Reverse DNS sweep on SA IP space (opt-in only)
+      # ============================================
+      - name: Reverse DNS PTR sweep
+        if: ${{ env.RUN_PTR_SWEEP == 'true' }}
+        run: |
+          curl -sSL --max-time 10 \
+            https://raw.githubusercontent.com/blechschmidt/massdns/master/lists/resolvers.txt \
+            -o /tmp/resolvers.txt 2>/dev/null \
+            || echo -e "1.1.1.1\n8.8.8.8\n9.9.9.9" > /tmp/resolvers.txt
+          chmod +x ./scripts/reverse-dns-sweep.sh
+          ./scripts/reverse-dns-sweep.sh
 
       # ============================================
       # STEP 4: Build geoip.dat and Country.mmdb
       # ============================================
+      - name: Cache geoip tool binary
+        id: cache-geoip-bin
+        uses: actions/cache@v4
+        with:
+          path: geoip-bin
+          key: geoip-tool-${{ runner.os }}-v1
+
       - name: Build geoip tool
+        if: steps.cache-geoip-bin.outputs.cache-hit != 'true'
         run: |
           git clone --depth=1 https://github.com/Loyalsoldier/geoip.git geoip-tool-src
           cd geoip-tool-src && go build -o ../geoip-bin . && cd ..
+          chmod +x geoip-bin
 
       - name: Generate geoip config
         run: |
@@ -199,6 +287,50 @@ jobs:
           cd v2ray-geosite
           go run . --outputdir=../release --outputname=geosite.dat --exportlists=sa
           cd ..
+
+      # ============================================
+      # STEP 5b: Build standalone sa.dat (ext:sa.dat:sa)
+      # ============================================
+      - name: Build standalone sa.dat
+        run: |
+          # Build minimal environment with only the sa data file
+          mkdir -p /tmp/sa-dat-build/data
+          cp v2ray-geosite/go.mod v2ray-geosite/go.sum /tmp/sa-dat-build/
+          cp v2ray-geosite/*.go /tmp/sa-dat-build/ 2>/dev/null || true
+          cp -r v2ray-geosite/internal /tmp/sa-dat-build/ 2>/dev/null || true
+          cp -r v2ray-geosite/vendor /tmp/sa-dat-build/ 2>/dev/null || true
+          cp domains/sa.txt /tmp/sa-dat-build/data/sa
+
+          cd /tmp/sa-dat-build
+          mkdir -p output
+          go run . --outputdir=output --outputname=sa.dat 2>/dev/null || \
+            go run github.com/v2fly/domain-list-community --outputdir=output --outputname=sa.dat
+
+          if [ -f output/sa.dat ]; then
+            cp output/sa.dat $GITHUB_WORKSPACE/release/sa.dat
+            SA_SIZE=$(wc -c < output/sa.dat)
+            echo "  sa.dat built: ${SA_SIZE} bytes"
+          else
+            echo "WARNING: sa.dat build failed — monolithic geosite.dat still available"
+          fi
+
+      # ============================================
+      # STEP 5c: Build Clash/Mihomo rule-set (sa.yaml + sa.mrs)
+      # ============================================
+      - name: Generate Clash/Mihomo rule-set
+        run: |
+          python3 scripts/generate-clash-ruleset.py \
+            --input domains/sa.txt \
+            --output release/sa.yaml
+          echo "  Generated sa.yaml ($(wc -l < release/sa.yaml) lines)"
+
+          # Compile sa.mrs binary
+          mihomo convert-ruleset domain yaml release/sa.yaml release/sa.mrs 2>/dev/null || \
+            echo "WARNING: mihomo mrs compilation failed — sa.yaml still available"
+
+          if [ -f release/sa.mrs ]; then
+            echo "  sa.mrs compiled: $(wc -c < release/sa.mrs) bytes"
+          fi
 
       # ============================================
       # STEP 6: Build sing-box Rule-Set (.srs)
@@ -296,6 +428,9 @@ jobs:
           | geoip.dat | v2ray GeoIP DAT | V2Ray/Xray-core |
           | geoip-lite.dat | v2ray GeoIP DAT (SA+private) | V2Ray/Xray-core |
           | geosite.dat | v2ray GeoSite DAT | V2Ray/Xray-core |
+          | sa.dat | v2ray GeoSite DAT (SA only) | Xray-core: ext:sa.dat:sa |
+          | sa.yaml | Clash/Mihomo rule-provider YAML | Clash/Mihomo rule-providers |
+          | sa.mrs  | Mihomo rule-set binary | Mihomo (meta) binary format |
           | Country.mmdb | MaxMind MMDB | sing-box/Clash |
           | Country-lite.mmdb | MaxMind MMDB (SA+private) | sing-box/Clash |
           | SA_Diversion_Rules_Karing_App.json | Karing Config | Karing App |

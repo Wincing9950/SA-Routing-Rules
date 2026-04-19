@@ -33,6 +33,17 @@ if [ -f ./data/sa-extra-ips.txt ]; then
   cat ./data/sa-extra-ips.txt >> sa-ips/sa-ripe.txt
 fi
 
+# --- Source 3: BGP-announced prefixes from Saudi ASes ---
+echo "  -> Fetching BGP-announced SA prefixes..."
+if [ -f ./scripts/fetch-sa-as-prefixes.sh ]; then
+  bash ./scripts/fetch-sa-as-prefixes.sh
+  if [ -f sa-ips/sa-bgp-prefixes.txt ]; then
+    BGP_COUNT=$(wc -l < sa-ips/sa-bgp-prefixes.txt)
+    echo "     Found ${BGP_COUNT} BGP-announced SA prefixes"
+    cat sa-ips/sa-bgp-prefixes.txt >> sa-ips/sa-ripe.txt
+  fi
+fi
+
 # Final sort and dedup
 LC_ALL=C sort -u sa-ips/sa-ripe.txt > sa-ips/sa-all.txt
 

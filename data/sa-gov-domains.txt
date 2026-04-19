@@ -49,10 +49,7 @@ cr.gov.sa
 saudibusiness.gov.sa
 
 # === Ministry of Health ===
-moh.gov.sa
 nphies.sa
-seha.sa
-sehati.gov.sa
 
 # === Ministry of Education ===
 moe.gov.sa
@@ -89,7 +86,6 @@ cst.gov.sa
 citc.gov.sa
 
 # === Ministry of Human Resources ===
-hrsd.gov.sa
 gosi.gov.sa
 taqat.sa
 
@@ -121,7 +117,6 @@ moc.gov.sa
 mos.gov.sa
 
 # === Saudi Central Bank (SAMA) ===
-sama.gov.sa
 
 # === Capital Market Authority ===
 cma.org.sa
@@ -156,7 +151,6 @@ saudiaramco.com
 sabic.com
 
 # === Saudi Electricity ===
-se.com.sa
 
 # === Public Investment Fund ===
 pif.gov.sa
@@ -166,7 +160,6 @@ sp.com.sa
 splonline.com.sa
 
 # === Zakat, Tax and Customs ===
-zatca.gov.sa
 
 # === General Entertainment Authority ===
 gea.gov.sa

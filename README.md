@@ -14,8 +14,8 @@ Inspired by [Chocolate4U/Iran-sing-box-rules](https://github.com/Chocolate4U/Ira
 
 A comprehensive set of geo-location routing rules for Saudi Arabia containing:
 
-- **GeoSite:SA** — 11,000+ Saudi Arabian domains (government, banking, telecom, e-commerce, media, apps, education)
-- **GeoIP:SA** — 733 Saudi Arabia IP CIDR blocks from RIPE NCC delegated statistics
+- **GeoSite:SA** — 20,000–30,000+ Saudi Arabian domains (government, banking, telecom, e-commerce, media, apps, education)
+- **GeoIP:SA** — Saudi Arabia IP CIDR blocks from RIPE NCC, BGP announcements, and MaxMind GeoLite2
 - **Karing App** — Ready-to-import diversion rules config
 
 All files are automatically rebuilt **weekly** via GitHub Actions.
@@ -151,15 +151,18 @@ Download the plain-text IP lists from the `release` branch for scripting.
 
 ## Data Sources
 
-### GeoSite (11,000+ Saudi Domains)
+### GeoSite (20,000–30,000+ Saudi Domains)
 
 | Source | Description | Count |
 |--------|-------------|-------|
-| `data/sa-domains.txt` | Major Saudi websites, telecom, e-commerce, banks, media | ~150 |
-| `data/sa-gov-domains.txt` | Government portals (Absher, Tawakkalna, Nafath, ministries) | ~80 |
-| `data/sa-services-domains.txt` | Saudi apps, fintech, delivery services | ~60 |
+| `data/sa-domains.txt` | Major Saudi websites, telecom, e-commerce, banks, media | ~165 |
+| `data/sa-gov-domains.txt` | Government portals (Absher, Tawakkalna, Nafath, ministries) | ~190 |
+| `data/sa-services-domains.txt` | Saudi apps, fintech, delivery services | ~129 |
 | [karenyousefi/bank-domains](https://github.com/karenyousefi/bank-domains) | Saudi bank domains | ~20 |
-| `data/sa-crux-domains.txt` | CrUX Top Lists (Chrome UX Report) filtered for SA | ~10,700 |
+| `data/sa-crux-domains.txt` | CrUX Top Lists (Chrome UX Report) filtered for SA | ~11,000 |
+| Certificate Transparency (crt.sh) | All .sa TLD certs + Saudi org certs | ~2,000–5,000 |
+| Majestic Million | Top-1M sites filtered by TLD, keywords, DNS | ~1,000–2,000 |
+| Reverse DNS PTR sweep | PTR records on Saudi IP space | ~2,000–8,000 |
 
 ### CrUX Filtering Pipeline
 
@@ -167,18 +170,19 @@ The Chrome UX Report (CrUX) provides the top 1M most popular domains in Saudi Ar
 
 1. **TLD matching** — All `.sa` domains (7,600+)
 2. **Keyword matching** — Domains containing Saudi city/brand names (3,100+)
-3. **Known Saudi companies** — Non-.sa domains of Saudi businesses (30+)
-4. **DNS verification** — Domains resolving to Saudi IP ranges (290+)
+3. **Known Saudi companies** — 200+ non-.sa domains of Saudi businesses
+4. **DNS verification** — Domains resolving to Saudi IP ranges (uses dnspython for speed)
 
 Source: [InternetHealthReport/crux-top-lists-country](https://github.com/InternetHealthReport/crux-top-lists-country) and [zakird/crux-top-lists](https://github.com/zakird/crux-top-lists)
 
-### GeoIP (733 CIDR Blocks)
+### GeoIP
 
 | Source | Description |
 |--------|-------------|
-| [RIPE NCC](https://ftp.ripe.net/pub/stats/ripencc/) | Authoritative IP delegation data for SA (612 IPv4 + 121 IPv6) |
-| [MaxMind GeoLite2](https://dev.maxmind.com/geoip/geolite2-free-geolocation-data) | Enhanced IP geolocation (requires license key) |
-| `data/sa-extra-ips.txt` | Additional Saudi ISP ranges |
+| [RIPE NCC](https://ftp.ripe.net/pub/stats/ripencc/) | Authoritative IP delegation data for SA |
+| BGP Announced Prefixes | Live BGP routing table for 10 Saudi ASes (RIPE Stat API) |
+| [MaxMind GeoLite2](https://dev.maxmind.com/geoip/geolite2-free-geolocation-data) | Enhanced IP geolocation (**required** — set `MAXMIND_LICENSE_KEY` secret) |
+| `data/sa-extra-ips.txt` | Verified override ranges not in RIPE/BGP data |
 
 ---
 

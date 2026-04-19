@@ -1,0 +1,19 @@
+# Energy & Resources
+aramco.com # Saudi Aramco (state-owned, world's largest oil company by market cap)
+saudiaramco.com # Saudi Aramco alternate domain
+sabic.com # SABIC (Tadawul:2010, 70% owned by Saudi Aramco, major petrochemicals)
+
+# Telecommunications
+stc.com # Saudi Telecom Company (Tadawul:7010, largest telecom)
+
+# State Giga-Projects & Vision 2030
+neom.com # NEOM (PIF state mega-project, future smart city)
+noon.com # Noon (PIF-backed, SA-specific e-commerce platform)
+
+# Media & Broadcasting
+stv.tv # Saudi Television (state broadcaster, Saudi Media Authority)
+
+# Aviation
+saudiairlines.com # Saudia (state airline, flag carrier)
+flyadeal.com # flyadeal (Saudia subsidiary, low-cost carrier)
+flynas.com # flynas (Nasair, private Saudi airline)

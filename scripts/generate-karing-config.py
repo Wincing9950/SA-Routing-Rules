@@ -23,18 +23,53 @@ def read_lines(filepath):
     return lines
 
 
-def extract_keywords(domains, min_length=4):
-    """Extract unique keywords from domain names for domain_keyword matching."""
-    keywords = set()
+_SA_SUB_TLDS = {'com', 'gov', 'edu', 'org', 'net', 'med', 'sch'}
+
+_GENERIC_WORDS = {
+    'www', 'http', 'https', 'mail', 'smtp', 'imap', 'pop3', 'ftp', 'dns',
+    'api', 'app', 'web', 'cdn', 'img', 'static', 'dev', 'test', 'beta',
+    'admin', 'login', 'auth', 'shop', 'store', 'blog', 'news', 'info',
+    'help', 'support', 'docs', 'data', 'cloud', 'host', 'server', 'node',
+    'edge', 'proxy', 'vpn', 'ssl', 'tls', 'portal', 'secure', 'pay',
+}
+
+
+def _get_sld(domain):
+    """Return the second-level domain (registrable name part)."""
+    parts = domain.rstrip('.').split('.')
+    # e.g. portal.ministry.gov.sa -> ['portal','ministry','gov','sa']
+    if len(parts) >= 4 and parts[-1] == 'sa' and parts[-2] in _SA_SUB_TLDS:
+        return parts[-3]   # 'ministry'
+    # e.g. example.com.sa -> ['example','com','sa']
+    if len(parts) == 3 and parts[-1] == 'sa' and parts[-2] in _SA_SUB_TLDS:
+        return parts[0]    # 'example'
+    # e.g. example.sa -> ['example','sa']
+    if len(parts) >= 2 and parts[-1] == 'sa':
+        return parts[-2]   # 'example'
+    # e.g. noon.com -> ['noon','com']
+    if len(parts) >= 2:
+        return parts[-2]   # 'noon'
+    return parts[0]
+
+
+def extract_keywords(domains, min_length=4, cap=2000):
+    """
+    Extract unique SLD keywords from domain names, ranked by frequency.
+    Returns up to `cap` keywords, most-frequent first.
+    """
+    from collections import Counter
+    counts = Counter()
     for domain in domains:
-        # Remove TLD parts
-        parts = domain.split('.')
-        if len(parts) >= 2:
-            # Take the main domain name (second-level domain)
-            name = parts[0] if len(parts) == 2 else parts[-3] if parts[-1] == 'sa' and parts[-2] in ('com', 'gov', 'edu', 'org', 'net') else parts[0]
-            if len(name) >= min_length and not name.isdigit():
-                keywords.add(name)
-    return sorted(keywords)
+        name = _get_sld(domain)
+        if (name
+                and len(name) >= min_length
+                and not name.isdigit()
+                and name not in _GENERIC_WORDS):
+            counts[name] += 1
+
+    # Sort by frequency descending, then alphabetically for stability
+    ranked = sorted(counts.keys(), key=lambda k: (-counts[k], k))
+    return ranked[:cap]
 
 
 def generate_karing_config(domains_file, ipv4_file, ipv6_file, output_file):
@@ -50,14 +85,7 @@ def generate_karing_config(domains_file, ipv4_file, ipv6_file, output_file):
     # Extract keywords from domains
     keywords = extract_keywords(domains)
     
-    # Limit keywords to most important ones (avoid overly broad matching)
-    # Keep keywords that are at least 4 chars and not too generic
-    generic_words = {'www', 'http', 'https', 'mail', 'smtp', 'imap', 'pop3', 'ftp', 'dns', 'api', 'app', 'web', 'cdn', 'img', 'static', 'dev', 'test', 'beta', 'admin', 'login', 'auth', 'shop', 'store', 'blog', 'news', 'info', 'help', 'support', 'docs', 'data', 'cloud', 'host', 'server', 'node', 'edge', 'proxy', 'vpn', 'ssl', 'tls'}
-    keywords = [k for k in keywords if k not in generic_words and len(k) >= 4]
-    
-    # Cap at 300 keywords to keep the config manageable
-    if len(keywords) > 300:
-        keywords = keywords[:300]
+    # Keywords are already filtered and capped inside extract_keywords()
     
     config = {
         "rules": [

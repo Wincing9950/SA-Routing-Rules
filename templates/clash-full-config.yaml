@@ -1,0 +1,33 @@
+# Full Clash/Mihomo configuration template with SA routing rules pre-configured.
+# Replace YOUR_PROXY_* placeholders with your actual proxy server details.
+# Supports: Clash Verge Rev, Stash, Mihomo (meta), Clash for Windows.
+
+mixed-port: 7890
+allow-lan: false
+mode: rule
+log-level: warning
+
+proxies:
+  - name: "MY-PROXY"
+    type: YOUR_PROXY_TYPE       # e.g. vmess, vless, trojan, ss
+    server: YOUR_PROXY_SERVER
+    port: 443
+
+proxy-groups:
+  - name: "PROXY"
+    type: select
+    proxies: ["MY-PROXY", "DIRECT"]
+
+rule-providers:
+  sa-rules:
+    type: http
+    behavior: domain
+    format: yaml
+    url: "https://github.com/YOUR_GITHUB_USER/SA-Routing-Rules/releases/latest/download/sa.yaml"
+    path: ./sa-rules.yaml
+    interval: 86400
+
+rules:
+  - RULE-SET,sa-rules,DIRECT
+  - GEOIP,SA,DIRECT
+  - MATCH,PROXY

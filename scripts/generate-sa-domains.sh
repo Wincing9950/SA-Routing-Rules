@@ -43,18 +43,31 @@ fi
 # --- Source 6: Try to fetch latest CrUX data from upstream ---
 echo "  -> Checking for updated CrUX data..."
 if command -v python3 &>/dev/null && [ -f ./scripts/filter_crux_sa_domains.py ]; then
-  CRUX_URL="https://raw.githubusercontent.com/InternetHealthReport/crux-top-lists-country/refs/heads/main/data/SA/latest.csv.gz"
-  if curl -sSL --fail "$CRUX_URL" -o /tmp/crux-sa-latest.csv.gz 2>/dev/null; then
+  # Find the latest YYYYMM.csv.gz in the InternetHealthReport CrUX country repo
+  CRUX_LATEST=$(curl -s --max-time 10 \
+    "https://api.github.com/repos/InternetHealthReport/crux-top-lists-country/contents/data/country/sa" \
+    | python3 -c "import json,sys; items=json.load(sys.stdin); print(sorted([i['name'] for i in items if i['name'].endswith('.csv.gz')])[-1])" 2>/dev/null || echo "")
+  CRUX_URL=""
+  if [ -n "$CRUX_LATEST" ]; then
+    CRUX_URL="https://raw.githubusercontent.com/InternetHealthReport/crux-top-lists-country/main/data/country/sa/${CRUX_LATEST}"
+  fi
+  if [ -n "$CRUX_URL" ] && curl -sSL --fail "$CRUX_URL" -o /tmp/crux-sa-latest.csv.gz 2>/dev/null; then
     gunzip -f /tmp/crux-sa-latest.csv.gz 2>/dev/null || true
     if [ -f /tmp/crux-sa-latest.csv ] && [ -s /tmp/crux-sa-latest.csv ]; then
       echo "     Running CrUX filter pipeline..."
+      DNS_FLAG=""
+      if [ "${SKIP_DNS:-false}" = "false" ]; then
+        DNS_FLAG="--resolve-dns --max-workers 200"
+      fi
       if [ -f ./sa-ips/sa-all.txt ]; then
         python3 ./scripts/filter_crux_sa_domains.py /tmp/crux-sa-latest.csv \
           -i ./sa-ips/sa-all.txt \
-          -o sa-crux-live.txt 2>/dev/null || true
+          -o sa-crux-live.txt \
+          $DNS_FLAG 2>/dev/null || true
       else
         python3 ./scripts/filter_crux_sa_domains.py /tmp/crux-sa-latest.csv \
-          -o sa-crux-live.txt 2>/dev/null || true
+          -o sa-crux-live.txt \
+          $DNS_FLAG 2>/dev/null || true
       fi
       if [ -s sa-crux-live.txt ]; then
         cat sa-crux-live.txt >> sa-crux.txt
@@ -66,13 +79,97 @@ if command -v python3 &>/dev/null && [ -f ./scripts/filter_crux_sa_domains.py ];
   fi
 fi
 
+# --- Source 7: Certificate Transparency (crt.sh) ---
+echo "  -> Fetching Certificate Transparency domains..."
+if [ -f ./scripts/fetch-ct-domains.py ]; then
+  python3 ./scripts/fetch-ct-domains.py -o sa-ct.txt 2>/dev/null || true
+  CT_COUNT=$(grep -v '^#' sa-ct.txt 2>/dev/null | grep -v '^$' | wc -l || echo 0)
+  echo "     Found ${CT_COUNT} CT domains"
+else
+  touch sa-ct.txt
+fi
+
+# --- Source 8: Majestic Million ---
+echo "  -> Filtering Majestic Million..."
+if [ -f ./scripts/fetch-majestic-sa.py ]; then
+  MAJESTIC_DNS_FLAG=""
+  if [ "${SKIP_DNS:-false}" = "false" ] && [ -f ./sa-ips/sa-all.txt ]; then
+    MAJESTIC_DNS_FLAG="--resolve-dns --ip-file ./sa-ips/sa-all.txt"
+  fi
+  python3 ./scripts/fetch-majestic-sa.py $MAJESTIC_DNS_FLAG -o sa-majestic.txt 2>/dev/null || true
+  MAJ_COUNT=$(grep -v '^#' sa-majestic.txt 2>/dev/null | grep -v '^$' | wc -l || echo 0)
+  echo "     Found ${MAJ_COUNT} Majestic SA domains"
+else
+  touch sa-majestic.txt
+fi
+
+# --- Source 9: Reverse DNS PTR hostnames ---
+echo "  -> Loading PTR hostnames from reverse DNS sweep..."
+if [ -f ./sa-ips/sa-ptr-domains.txt ]; then
+  PTR_COUNT=$(wc -l < sa-ips/sa-ptr-domains.txt)
+  echo "     Found ${PTR_COUNT} PTR domains"
+  cat sa-ips/sa-ptr-domains.txt > sa-ptr.txt
+else
+  touch sa-ptr.txt
+fi
+
+# --- Source 10: Cloudflare Radar top-100 SA domains ---
+echo "  -> Fetching Cloudflare Radar top SA domains..."
+if [ -n "${CF_API_KEY:-}" ]; then
+  python3 ./scripts/fetch-cloudflare-radar.py -o sa-radar.txt 2>/dev/null || touch sa-radar.txt
+  RADAR_COUNT=$(grep -vc '^$' sa-radar.txt 2>/dev/null || echo 0)
+  echo "     Found ${RADAR_COUNT} Radar domains"
+else
+  touch sa-radar.txt
+  echo "     CF_API_KEY not set — Cloudflare Radar source skipped"
+fi
+
+# --- Source 11: SA entity registry (non-.sa hard-includes) ---
+echo "  -> Loading SA entity registry..."
+grep -v '^#' ./data/sa-entities.txt 2>/dev/null | \
+  awk '{print $1}' | grep -v '^$' | \
+  tr '[:upper:]' '[:lower:]' > sa-entities-clean.txt || touch sa-entities-clean.txt
+ENTITY_COUNT=$(wc -l < sa-entities-clean.txt)
+echo "     Found ${ENTITY_COUNT} entity registry domains"
+
+# --- Source 12: Classify non-.sa candidates ---
+echo "  -> Running non-.sa domain classifier..."
+if command -v python3 &>/dev/null && [ -f ./scripts/classify-non-sa.py ]; then
+  cat sa-radar.txt sa-majestic.txt 2>/dev/null | \
+    grep -v '\.sa$' | grep -v '^$' | LC_ALL=C sort -u > sa-candidates.txt
+  CANDIDATES=$(wc -l < sa-candidates.txt)
+  echo "     ${CANDIDATES} non-.sa candidates for classification"
+  if [ "$CANDIDATES" -gt 0 ]; then
+    PROBE_FLAG="--no-probe"
+    if [ "${RUN_HTTP_PROBE:-false}" = "true" ]; then
+      PROBE_FLAG=""
+      echo "     HTTP probe enabled (RUN_HTTP_PROBE=true)"
+    fi
+    python3 ./scripts/classify-non-sa.py \
+      --input sa-candidates.txt \
+      --output-include sa-classified.txt \
+      --output-review data/sa-review-queue.txt \
+      --entities data/sa-entities.txt \
+      $PROBE_FLAG 2>/dev/null || touch sa-classified.txt
+    CLASS_COUNT=$(grep -vc '^$' sa-classified.txt 2>/dev/null || echo 0)
+    echo "     ${CLASS_COUNT} domains auto-included from classification"
+  else
+    touch sa-classified.txt
+  fi
+else
+  touch sa-classified.txt
+fi
+
 # --- Combine all sources ---
 echo "  -> Combining all domain sources..."
-cat sa-banks.txt sa-curated.txt sa-gov.txt sa-services.txt sa-crux.txt | \
+cat sa-banks.txt sa-curated.txt sa-gov.txt sa-services.txt \
+    sa-crux.txt sa-ct.txt sa-majestic.txt sa-ptr.txt \
+    sa-radar.txt sa-classified.txt sa-entities-clean.txt | \
   sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' | \
   grep -v '^#' | \
   grep -v '^$' | \
   tr '[:upper:]' '[:lower:]' | \
+  python3 ./scripts/sanitize-domains.py | \
   LC_ALL=C sort -u > sa-all-tmp.txt
 
 # Add the .sa TLD itself and its IDN equivalent
@@ -92,4 +189,6 @@ echo "  -> Generated $(wc -l < domains/sa.txt) unique Saudi domains"
 echo "==> Done generating Saudi Arabia domain list"
 
 # Cleanup temp files
-rm -f sa-banks.txt sa-curated.txt sa-gov.txt sa-services.txt sa-crux.txt sa-crux-live.txt sa-all-tmp.txt
+rm -f sa-banks.txt sa-curated.txt sa-gov.txt sa-services.txt \
+      sa-crux.txt sa-crux-live.txt sa-ct.txt sa-majestic.txt sa-ptr.txt sa-all-tmp.txt \
+      sa-radar.txt sa-candidates.txt sa-classified.txt sa-entities-clean.txt

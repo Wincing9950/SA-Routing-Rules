@@ -26,6 +26,27 @@ import concurrent.futures
 from urllib.parse import urlparse
 from collections import defaultdict
 
+try:
+    import dns.resolver as _dns_resolver
+    _HAS_DNSPYTHON = True
+except ImportError:
+    _HAS_DNSPYTHON = False
+
+_FAST_RESOLVERS = ['1.1.1.1', '8.8.8.8', '9.9.9.9', '208.67.222.222']
+_DNS_TIMEOUT = 2  # seconds
+
+
+def _make_resolver():
+    """Return a configured dns.resolver.Resolver using fast public nameservers."""
+    if not _HAS_DNSPYTHON:
+        return None
+    r = _dns_resolver.Resolver()
+    r.nameservers = _FAST_RESOLVERS
+    r.timeout = _DNS_TIMEOUT
+    r.lifetime = _DNS_TIMEOUT
+    return r
+
+
 # Saudi Arabia TLDs and sub-TLDs
 SA_TLDS = {'.sa', '.com.sa', '.gov.sa', '.edu.sa', '.org.sa', '.net.sa', '.med.sa', '.sch.sa'}
 
@@ -128,29 +149,146 @@ GLOBAL_EXCLUDES = {
 
 # Saudi-specific keywords that suggest a domain is Saudi-related
 SA_KEYWORDS = {
+    # ── Original entries ──────────────────────────────────────────────────
     'saudi', 'riyadh', 'jeddah', 'jidda', 'makkah', 'mecca', 'madinah', 'medina',
     'dammam', 'khobar', 'dhahran', 'tabuk', 'taif', 'abha', 'najran', 'hail',
     'jizan', 'jazan', 'yanbu', 'jubail', 'neom', 'kaec', 'qassim', 'buraidah',
-    'ksa', 'saudia', 'aramco', 'sabic', 'stc-', 'mobily', 'zain-sa',
-    'alrajhi', 'alinma', 'albilad', 'sabb-', 'riyadbank', 'bankalahli',
+    'ksa', 'saudia', 'aramco', 'sabic', 'mobily', 'zain-sa',
+    'alrajhi', 'alinma', 'albilad', 'riyadbank', 'bankalahli',
     'tawakkalna', 'absher', 'nafath', 'sehhaty',
-    'haraj', 'jarir', 'panda-sa', 'tamimi',
+    'haraj', 'jarir', 'tamimi',
     'hungerstation', 'jahez', 'marsool', 'mrsool',
+    # ── Additional cities / regions ───────────────────────────────────────
+    'qatif', 'ahsa', 'alahsa', 'hafar', 'baha', 'albaha',
+    'wajh', 'alwajh', 'arar', 'sakaka', 'jouf', 'aljouf',
+    'dawadmi', 'shaqra', 'majmaah', 'zulfi', 'kharj', 'alkharj',
+    'khafji', 'hafralbatn', 'onaizah', 'unaizah',
+    'bisha', 'turaif', 'rafha', 'alqurayyat',
+    # ── Government service keywords ───────────────────────────────────────
+    'tasheel', 'istimara', 'muqeem', 'iqama',
+    'madrasati', 'tomooh', 'nusuk', 'sadad',
+    # ── Known SA brand fragments ──────────────────────────────────────────
+    'nupco', 'aldawaa', 'alnahdi', 'almajdouie', 'bindawood',
+    'aldrees', 'alothaim', 'albaik', 'herfy',
+    'salla', 'foodics', 'geidea', 'stcpay', 'urpay', 'tabby',
 }
 
 # Known Saudi companies with non-.sa domains
 KNOWN_SAUDI_DOMAINS = {
+    # ── Core / Already Existed ─────────────────────────────────────────────
     'noon.com', 'careem.com', 'hungerstation.com', 'argaam.com',
     'sabq.org', 'alarabiya.net', 'aawsat.com', 'mbc.net',
     'shahid.net', 'rotana.net', 'anghami.com', 'thmanyah.com',
     'srmg.com', 'flynas.com', 'flyadeal.com', 'almosafer.com',
     'aramex.com', 'fetchr.us', 'neom.com', 'aramco.com',
     'saudiaramco.com', 'sabic.com', 'ithra.com',
-    'tawuniya.com', 'bupa.com', 'tamara.co', 'tabby.ai',
+    'tawuniya.com', 'tamara.co', 'tabby.ai',
     'moyasar.com', 'tap.company', 'hyperpay.com',
     'namshi.com', 'ounass.com', 'fordeal.com',
     'bayt.com', 'adslgate.com', 'jeeny.com',
     'stcplay.gg', 'jawwy.tv',
+    # ── E-Commerce & Retail ────────────────────────────────────────────────
+    'salla.com', 'extra.com', 'jarir.com',
+    'bindawood.com', 'alothaimeen.com',
+    'lulu-ksa.com', 'bayut.sa', 'haraj.com.sa', 'opensooq.com',
+    'sivvi.com', 'mumzworld.com',
+    # ── Fintech & Banking ──────────────────────────────────────────────────
+    'stcpay.com.sa', 'urpay.com', 'foodics.com', 'geidea.net',
+    'payfort.com', 'paytabs.com', 'postpay.io', 'halalah.io',
+    'mada.com.sa', 'bankbilad.com.sa', 'bsf.com.sa', 'alinma.com',
+    'alrajhibank.com.sa', 'alahli.com', 'sabb.com',
+    'anb.com.sa', 'albilad.com.sa', 'aljazirabank.com.sa',
+    'saib.com.sa', 'amlak.com.sa',
+    # ── Ride / Delivery / Logistics ───────────────────────────────────────
+    'mrsool.co', 'jahez.net', 'marsool.com',
+    'naqel.com.sa', 'smsa.com', 'talabat.com',
+    'toters.com', 'bosta.co',
+    # ── Media & News ──────────────────────────────────────────────────────
+    'okaz.com.sa', 'sauress.com',
+    'al-jazirah.com', 'alriyadh.com', 'alwatan.com.sa',
+    'aleqt.com', 'saudigazette.com.sa',
+    'arabnews.com', 'asharq.com', 'skynewsarabia.com',
+    # ── Telecom ───────────────────────────────────────────────────────────
+    'stc.com.sa', 'mobily.com.sa', 'zain.com.sa', 'salam.sa',
+    'jawwy.com',
+    # ── Travel & Aviation ─────────────────────────────────────────────────
+    'saudia.com', 'visitsaudi.com', 'wego.com.sa',
+    # ── Real Estate ───────────────────────────────────────────────────────
+    'aqar.fm', 'ejar.sa', 'wasalt.com',
+    'propertyfinder.com.sa', 'sakani.com.sa',
+    # ── Health & Pharma ───────────────────────────────────────────────────
+    'nupco.com', 'aldawaa.com', 'alnahdi.com.sa',
+    'dawrni.com', 'ngha.med.sa', 'sehhaty.com.sa', 'vezeeta.com',
+    # ── Education ─────────────────────────────────────────────────────────
+    'alfaisal.edu', 'madrasati.sa', 'rwaq.org', 'edraak.org',
+    # ── Government-Adjacent & Services ────────────────────────────────────
+    'elm.sa', 'srca.com.sa', 'muqeem.sa', 'seha.sa', 'cchi.gov.sa',
+    # ── Enterprise & Cloud ────────────────────────────────────────────────
+    'misk.org.sa', 'kaust.edu.sa', 'amaala.com', 'diriyah.sa',
+    # ── Food & Beverage ───────────────────────────────────────────────────
+    'albaik.com', 'herfy.com', 'kudu.com.sa',
+    # ── Insurance ─────────────────────────────────────────────────────────
+    'bupa.com.sa', 'salama.com.sa', 'malath.com.sa', 'walaa.com.sa',
+    # ── Automotive ────────────────────────────────────────────────────────
+    'aldawlia.com', 'almajdouie.com', 'aldrees.com',
+    'aljomaih.com', 'syarah.com', 'motory.sa',
+    # ── HR & Recruitment ──────────────────────────────────────────────────
+    'work.sa', 'jobs.sa',
+    # ── Agriculture & Food Supply ─────────────────────────────────────────
+    'nadec.com.sa', 'almarai.com',
+    # ── Additional E-Commerce & Marketplace ───────────────────────────────
+    'souq.com', 'awok.com', 'langara.com.sa', 'nana.com.sa',
+    'floward.com', 'nugttah.com', 'salla.sa', 'zid.sa',
+    'hbsc.com.sa', 'virgin-megastore.sa', 'xcite.com',
+    # ── Additional Fintech ─────────────────────────────────────────────────
+    'riyad.com.sa', 'riyadbank.com', 'ncb.com.sa', 'alahlidigital.sa',
+    'wafi.com.sa', 'sarwa.com', 'barq.com.sa', 'lean.mx',
+    'tarabut.com', 'tiqmo.com',
+    # ── Additional Media & Entertainment ──────────────────────────────────
+    'sbc.sa', 'trt.net.tr', 'ksa2.sa', 'spa.gov.sa',
+    'al-madina.com', 'okaz.com.sa', 'alwatan.com', 'maaal.com',
+    'hia.sa', 'zawya.com', 'mubasher.info',
+    # ── Additional Health ─────────────────────────────────────────────────
+    'almana.com.sa', 'sgh.com.sa', 'dallah-hospital.com',
+    'dr-soliman-fakeeh.com', 'hamad.qa', 'healthigo.com',
+    # ── Additional Education ──────────────────────────────────────────────
+    'kfu.edu.sa', 'ksau-hs.edu.sa', 'tvtc.gov.sa',
+    'moe.gov.sa', 'ncc.gov.sa', 'kku.edu.sa',
+    # ── Additional Government & Utilities ─────────────────────────────────
+    'spa.gov.sa', 'sec.gov.sa', 'aramco.sa',
+    'pif.gov.sa', 'gosi.gov.sa', 'hrsd.gov.sa',
+    'moj.gov.sa', 'boe.gov.sa', 'zakat.gov.sa',
+    'mci.gov.sa', 'momah.gov.sa', 'mcit.gov.sa',
+    # ── Additional Telecom & Tech ──────────────────────────────────────────
+    'solutions.com.sa', 'unifonic.com', 'msegat.com',
+    'unifonic.sa', 'mobily.sa', 'thiqah.com.sa',
+    # ── Additional Food & Restaurants ─────────────────────────────────────
+    'tazaj.com.sa', 'albaik.sa', 'kfcsa.com',
+    'pizza-hut.com.sa', 'mcdonalds.com.sa', 'shawarmaji.com',
+    # ── Additional Real Estate & Construction ─────────────────────────────
+    'emaar.com', 'roshn.sa', 'dar.com.sa',
+    'lamar.sa', 'retal.com.sa', 'cayan.net',
+    'alargan.com', 'aljabr.com',
+    # ── Additional Retail & Fashion ───────────────────────────────────────
+    'hm.com.sa', 'zara.sa', 'lc-waikiki.com.sa',
+    'mothercare.com.sa', 'aldo.com.sa', 'lifestyle.sa',
+    'centrepoint.com', 'landmark.sa', 'babyshop.com',
+    # ── Additional Automotive ──────────────────────────────────────────────
+    'toyota.com.sa', 'bmw-ksa.com', 'mercedes-benz.com.sa',
+    'alganimi.com', 'alyamamah.com.sa', 'petromin.com',
+    # ── Additional Logistics & Supply Chain ───────────────────────────────
+    'spl.com.sa', 'rmo.com.sa', 'fastlo.sa',
+    'naql.sa', 'mawgif.sa',
+    # ── Additional Tourism & Hospitality ──────────────────────────────────
+    'jabal-omar.com', 'dar-al-arkan.com', 'rotanahotels.com',
+    'movenpick.com.sa', 'hilton.com.sa', 'marriott.com.sa',
+    # ── Additional Finance & Investment ───────────────────────────────────
+    'tadawul.com.sa', 'cma.org.sa', 'sama.gov.sa',
+    'ncfsa.gov.sa', 'argaam.com', 'mubasher.sa',
+    'alistithmari.com', 'alawwal.com',
+    # ── Additional Agriculture & Food Production ───────────────────────────
+    'saco.com.sa', 'sadafco.com', 'alwatania.com.sa',
+    'herfy.net', 'hasana.com.sa',
 }
 
 
@@ -204,11 +342,23 @@ def is_global_exclude(domain):
 
 
 def has_sa_keyword(domain):
-    """Check if domain contains Saudi-specific keywords."""
-    domain_lower = domain.lower()
-    for kw in SA_KEYWORDS:
-        if kw in domain_lower:
-            return True
+    """Check if domain labels contain Saudi-specific keywords at word boundaries.
+
+    Matches keywords only at the start, end, or hyphen boundaries of each
+    dot-separated label — never as free substrings. This prevents false positives
+    such as 'hail' matching 'thailand', 'ksa' matching 'aksaray', or 'baha'
+    matching 'bahamas'.
+
+    Examples that MATCH:  hail.gov.sa, ksa.com, al-baha.sa, riyadh-bank.com
+    Examples that DON'T:  thailand.com, aksaray.gov.tr, bahamas.gov.bs
+    """
+    labels = domain.lower().split('.')
+    for label in labels:
+        # Split label further on hyphens to get individual word tokens
+        tokens = label.split('-')
+        for kw in SA_KEYWORDS:
+            if kw in tokens:
+                return True
     return False
 
 
@@ -248,14 +398,24 @@ def is_saudi_ip(ip_str, sa_networks):
 
 
 def resolve_domain(domain):
-    """Resolve a domain to its IP addresses."""
+    """
+    Resolve a domain to its IPv4 addresses.
+    Uses dnspython when available for speed and reliability.
+    Falls back to socket on ImportError.
+    Returns [] on any resolution failure — never raises.
+    """
+    resolver = _make_resolver()
+    if resolver is not None:
+        try:
+            answers = resolver.resolve(domain, 'A')
+            return [str(a) for a in answers]
+        except Exception:
+            return []
+    # Fallback: stdlib socket
     try:
-        results = socket.getaddrinfo(domain, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
-        ips = set()
-        for result in results:
-            ips.add(result[4][0])
-        return list(ips)
-    except (socket.gaierror, socket.timeout, OSError):
+        results = socket.getaddrinfo(domain, None, socket.AF_INET, socket.SOCK_STREAM)
+        return list({r[4][0] for r in results})
+    except Exception:
         return []
 
 
