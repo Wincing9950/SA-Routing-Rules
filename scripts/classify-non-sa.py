@@ -14,7 +14,7 @@ import argparse
 import sys
 import os
 
-REVIEW_THRESHOLD = 2
+REVIEW_THRESHOLD = 3
 
 
 def _load_set(path: str) -> set[str]:
@@ -29,7 +29,10 @@ def _load_set(path: str) -> set[str]:
                 line = line.strip()
                 if not line or line.startswith('#'):
                     continue
-                result.add(line.lower())
+                # Strip inline comments
+                line = line.split('#')[0].strip()
+                if line:
+                    result.add(line.lower())
     except FileNotFoundError:
         pass
     return result

@@ -52,6 +52,16 @@ def test_weak_signals_excluded():
     assert result['verdict'] == 'EXCLUDE'
 
 
+def test_score_of_two_is_now_excluded():
+    """Score of 2 was REVIEW at threshold=2; must be EXCLUDE at threshold=3."""
+    def fake_probe(domain):
+        return {'geo_blocked': False, 'score': 2,
+                'signals': {'arabic_content': True, 'sar_currency': True},
+                'error': None}
+    result = clf.classify_domain('somesite.com', MOCK_EXCLUSION, MOCK_ENTITIES, probe_fn=fake_probe)
+    assert result['verdict'] == 'EXCLUDE'
+
+
 def test_sa_tld_domain_is_always_included():
     result = clf.classify_domain('example.sa', MOCK_EXCLUSION, MOCK_ENTITIES, probe_fn=None)
     assert result['verdict'] == 'INCLUDE'
