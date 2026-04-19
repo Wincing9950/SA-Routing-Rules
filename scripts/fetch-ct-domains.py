@@ -106,7 +106,7 @@ def fetch_all_sa_ct_domains(output_file=None):
     for pattern in SA_TLD_PATTERNS:
         print(f"  -> {pattern}", file=sys.stderr)
         certs = query_crtsh(pattern)
-        domains = parse_ct_response(certs)
+        domains = {d for d in parse_ct_response(certs) if d.endswith('.sa')}
         all_domains.update(domains)
         print(f"     +{len(domains)} domains (total: {len(all_domains)})", file=sys.stderr)
         time.sleep(REQUEST_DELAY)
@@ -120,7 +120,7 @@ def fetch_all_sa_ct_domains(output_file=None):
         print(f"     +{len(domains)} .sa domains", file=sys.stderr)
         time.sleep(REQUEST_DELAY)
 
-    sa_domains = {d for d in all_domains if d.endswith('.sa') or '.sa.' in d}
+    sa_domains = {d for d in all_domains if d.endswith('.sa')}
     print(f"\n==> Total unique SA CT domains: {len(sa_domains)}", file=sys.stderr)
 
     if output_file:

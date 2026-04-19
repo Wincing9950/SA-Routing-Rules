@@ -104,3 +104,14 @@ def test_extract_domains_mixed_valid_and_invalid():
     assert '_collab-edge._tls.mof.gov.sa' not in domains
     assert 'absher.gov.sa' in domains
     assert 'mof.gov.sa' in domains
+
+
+def test_phase1_filter_excludes_sa_gov_au():
+    """Regression: crt.sh %.sa pattern matches .sa anywhere — filter must require .sa TLD suffix."""
+    raw = [
+        {'name_value': 'burnside.sa.gov.au\nexample.sa', 'common_name': 'burnside.sa.gov.au'}
+    ]
+    all_domains = parse_ct_response(raw)
+    filtered = {d for d in all_domains if d.endswith('.sa')}
+    assert 'burnside.sa.gov.au' not in filtered, "South Australian domain must be excluded"
+    assert 'example.sa' in filtered, "Genuine .sa domain must be kept"
